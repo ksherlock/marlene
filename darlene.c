@@ -203,7 +203,7 @@ static int cnt;
 				IAC, SE
 				};
 				TCPIPWriteTCP(ipid, msg,
-					sizeof(msg) -1, true, false);
+					sizeof(msg), true, false);
 			}
 			else if (buffer[0] == TELOPT_NAWS
 				&& buffer[1] == TELQUAL_SEND)
@@ -215,8 +215,7 @@ static int cnt;
 				IAC, SE
 				};
 				TCPIPWriteTCP(ipid, msg,
-					sizeof(msg) - 1, true, false);
-                                
+					sizeof(msg), true, false);
 			}
 
 			cnt = 0;
