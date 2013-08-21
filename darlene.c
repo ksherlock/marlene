@@ -297,7 +297,7 @@ static QuitRecGS qDCB = {2, 0, 0x4000};
 	Word key;
 	Word err;
 	unsigned char c;
-	int fd;
+	//int fd;
 	int iac_state;
 
 
@@ -409,7 +409,7 @@ static QuitRecGS qDCB = {2, 0, 0x4000};
 	display_str("\n\rConnected\n\r", 13);
 
 
-	fd = open ("tcp.log", O_TRUNC | O_WRONLY | O_CREAT, 0777);
+	//fd = open ("tcp.log", O_TRUNC | O_WRONLY | O_CREAT, 0777);
 
 	Quit = false;
 
@@ -435,7 +435,7 @@ static QuitRecGS qDCB = {2, 0, 0x4000};
 
 		if (err == 0)
 		{
-			if (fd > 0) write(fd, &c, 1);
+			//if (fd > 0) write(fd, &c, 1);
 			if (iac_state)
 				iac_state = do_iac(iac_state, c, ipid);
 			else if (modeTelnet && c == IAC)
@@ -483,7 +483,7 @@ static QuitRecGS qDCB = {2, 0, 0x4000};
 	}
 
 _exit1:
-	if (fd > 0) close(fd);
+	//if (fd > 0) close(fd);
 	TCPIPCloseTCP(ipid);
 	TCPIPPoll(); // wait until closed...
 	TCPIPLogout(ipid);
