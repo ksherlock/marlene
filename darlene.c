@@ -217,7 +217,18 @@ static int cnt;
 				TCPIPWriteTCP(ipid, msg,
 					sizeof(msg), true, false);
 			}
-
+			else if (buffer[0] == TELOPT_TSPEED
+				&& buffer[1] == TELQUAL_SEND)
+			{
+				static char msg[] =
+				{
+				IAC, SB, TELOPT_TSPEED,
+				'9', '6', '0', '0', ',', '9', '6', '0', '0',
+				IAC, SE
+				};
+				TCPIPWriteTCP(ipid, msg,
+					sizeof(msg), true, false);
+			}
 			cnt = 0;
 			return 0;
 		default:
@@ -230,7 +241,8 @@ static int cnt;
 		buffer[2] = c;
 		if (c == TELOPT_TTYPE
 			|| c == TELOPT_SGA
-			|| c == TELOPT_NAWS)
+			|| c == TELOPT_NAWS
+			|| c == TELOPT_TSPEED)
 		{
 			buffer[1] = WILL;
 		}
