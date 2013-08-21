@@ -91,24 +91,29 @@ void init_screen(void)
 #define BLACK	0x0000
 #define BLUE	0x000f
 #define GREEN	0x00f0
+#define RED		0x0f00
+
 static ColorTable ct =
 {
-	0x0000, //black
-	0x00f0,	//green	 0x5555
-	0x0f00, //blue   0xaaaa
-	WHITE, //white  0xffff
-	0x0000, //black
-	0x00f0,	//green
-	0x0f00, //blue
-	WHITE, //white
-	0x0000, //black
-	0x00f0,	//green
-	0x0f00, //blue
-	WHITE, //white
-	0x0000, //black
-	0x00f0,	//green
-	0x0f00, //blue
-	WHITE //white
+	BLACK, // background
+	RED,   // underline / blink
+	BLUE,  // bold
+	GREEN, // foreground
+
+	BLACK, 
+	RED,
+	BLUE,
+	GREEN,
+
+	BLACK, 
+	RED,	
+	BLUE, 
+	GREEN, 
+
+	BLACK, 
+	RED,
+	BLUE,
+	GREEN,
 };
 int i;
 
@@ -132,7 +137,7 @@ int i;
 
 	SetMasterSCB(0xc080);
 	SetAllSCBs(0xc080);
-	InitColorTable(ct);
+	//InitColorTable(ct);
 	for (i = 0; i < 15; i++)
 		SetColorTable(i, ct);
 
