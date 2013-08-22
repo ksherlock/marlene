@@ -171,7 +171,7 @@ static int cnt;
 
 	if (state == SB_IAC)
 	{
-		// it was an escped FF
+		// it was an escaped FF
 		if (c == IAC)
 		{
 			buffer[cnt++] = IAC;

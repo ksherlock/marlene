@@ -1,5 +1,5 @@
-PROG	= darlene
-OBJS	= darlene.o vt100.o ansi.o chars.o marinetti.o display.o
+PROG	= fctelnet
+OBJS	= fctelnet.o vt100.o ansi.o chars.o marinetti.o display.o
 
 OPTIMIZE *= 79
 
@@ -11,7 +11,7 @@ $(PROG): $(OBJS)
 	$(CC) $(CFLAGS) $(OBJS) -o $@
 
 
-darlene.o:	darlene.c Marinetti.h
+fctelnet.o:	fctelnet.c marinetti.h
 vt100.o:	vt100.c
 ansi.o:		ansi.asm
 chars.o:	chars.asm
