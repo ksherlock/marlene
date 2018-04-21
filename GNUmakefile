@@ -1,10 +1,12 @@
-PROG	= fctelnet
-OBJS	= o/fctelnet.a o/vt100.a o/telnet.a o/ansi.a o/chars.a o/marinetti.a o/display.a
+PROG	= marlene
+OBJS	= o/main.a o/vt100.a o/telnet.a o/ansi.a o/chars.a o/marinetti.a o/display.a
+
+CC = occ --gno
 
 OPTIMIZE ?= 79
 
 CFLAGS = -w-1 -O $(OPTIMIZE)
-CC = occ --gno
+ASMFLAGS =
 
 $(PROG): $(OBJS)
 	$(RM) o/ansi.root
@@ -12,21 +14,24 @@ $(PROG): $(OBJS)
 	$(CC) $(OBJS) -o $@
 
 
-fctelnet.o:	fctelnet.c marinetti.h
-vt100.o:	vt100.c CLAGS+=-r
-ansi.o:		ansi.asm
-chars.o:	chars.asm
-marinetti.o:	marinetti.c CLAGS+=-r
-telnet.o:	telnet.c CLAGS+=-r
+main.o: main.c
+vt100.o: vt100.c CLAGS+=-r
+ansi.o: ansi.asm
+chars.o: chars.asm
+marinetti.o: marinetti.c CLAGS+=-r
+telnet.o: telnet.c CLAGS+=-r
 
-o/%.a : %.c
+o :
+	mkdir o
+
+o/%.a : %.c | o
 	$(CC) -c $(CFLAGS) -o $@ $^
 
-o/%.a : %.asm
-	$(CC) -c $(CFLAGS) -o $@ $^
+o/%.a : %.asm | o
+	$(CC) -c $(ASMFLAGS) -o $@ $^
 
 
 clean:
-	$(RM) -f *.o *.root *.a *.r
+	$(RM) -rf o
 clobber: clean
 	$(RM) -f $(PROG)
