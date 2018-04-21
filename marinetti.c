@@ -87,17 +87,20 @@ EventRecord event;
 	return false;
 }
 
-int WaitForStatus(word ipid, word status) {
+int WaitForStatus(word ipid, word status_mask) {
 	static srBuffer sr;
 	EventRecord event;
 	Word err;
+	unsigned bits;
 
 	for(;;) {
 		TCPIPPoll();
 		err = TCPIPStatusTCP(ipid, &sr);
 		if (err) return err;
 
-		if (sr.srState == status) return 0;
+		bits = 1 << sr.srState;
+		if (status_mask & bits) return 0;
+
 		GetNextEvent(keyDownMask | autoKeyMask, &event);
 		if (event.what != keyDownEvt) continue;
 		if (!(event.modifiers & appleKey))  continue;

@@ -35,7 +35,7 @@ extern pascal void InitColorTable(ColorTable) inline(0x0D04,dispatcher);
 
 
 Word ResolveHost(const char *name, cvtRecPtr cvt);
-int WaitForStatus(word ipid, word status);
+int WaitForStatus(word ipid, word status_mask);
 
 
 void display_pstr(const char *);
@@ -265,7 +265,7 @@ int main(int argc, char **argv) {
 	TCPIPOpenTCP(ipid);
 
 	// wait for the connection to occur.
-	ok = WaitForStatus(ipid, TCPSESTABLISHED);
+	ok = WaitForStatus(ipid, 1 << TCPSESTABLISHED);
 	if (ok > 0) display_err(ok);
 	if (ok != 0) goto _exit2;
 
@@ -347,7 +347,7 @@ _exit1:
 	display_cstr("\n\rClosing TCP Connection...\n\r");
 
 	TCPIPCloseTCP(ipid);
-	WaitForStatus(ipid, TCPSCLOSED);
+	WaitForStatus(ipid, (1 << TCPSCLOSED) | (1 << TCPSTIMEWAIT));
 
 _exit2:
 
