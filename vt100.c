@@ -529,7 +529,7 @@ void vt100_process(const unsigned char *buffer, unsigned buffer_size) {
 
 			case st_lbracket:
 				private = 0;
-				parm_count = 0;
+				parm_count = 1;
 				parms[0] = 0;
 				parms[1] = 0;
 				if (c == '?') { private = 1; state = st_parm; continue; }
