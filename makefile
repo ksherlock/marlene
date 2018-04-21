@@ -1,5 +1,5 @@
 PROG	= fctelnet
-OBJS	= fctelnet.o vt100.o ansi.o chars.o marinetti.o display.o
+OBJS	= fctelnet.o vt100.o telnet.o ansi.o chars.o marinetti.o display.o
 
 OPTIMIZE *= 79
 
@@ -16,6 +16,7 @@ vt100.o:	vt100.c
 ansi.o:		ansi.asm
 chars.o:	chars.asm
 marinetti.o:	marinetti.c
+telnet.o:	telnet.c
 
 clean:
 	$(RM) -f *.o *.root *.a *.r

@@ -60,25 +60,21 @@ EventRecord event;
 	else
 	{
 		TCPIPDNRNameToIP(pstr, &dnr);
-		if (_toolErr)
-		{
+		if (_toolErr) {
 			free(pstr);
 			return false;
 		}
-		while (dnr.DNRStatus == DNRPending)
-		{
+		while (dnr.DNRStatus == DNRPending) {
 			TCPIPPoll();
 			GetNextEvent(keyDownMask | autoKeyMask, &event);
 			if ((event.what == keyDownEvt)
 				&& (event.modifiers & appleKey)
-				&& ((Word)event.message == '.'))
-			{
+				&& ((Word)event.message == '.')) {
 				TCPIPCancelDNR(&dnr);
 				break;
 			}
 		}
-		if (dnr.DNRStatus == DNROK)
-		{
+		if (dnr.DNRStatus == DNROK) {
 			cvt->cvtIPAddress = dnr.DNRIPAddress;
 			cvt->cvtPort = port;
 			free(pstr);
@@ -91,47 +87,25 @@ EventRecord event;
 	return false;
 }
 
+int WaitForStatus(word ipid, word status) {
+	static srBuffer sr;
+	EventRecord event;
+	Word err;
 
-/*
- * pcnt is the next place to store data
- * bptr is the current ptr.
- */
-static unsigned char buffer[1024];
-static unsigned char pushback[1024];
-static int pcnt = 0;
-static int bcnt = 0;
-static int bptr = 0;
-static rrBuff rr;
-
-Word GetChar(word ipid, unsigned char *c)
-{
-word err;
-
-	*c = 0;
-
-	if (pcnt)
-	{
-		*c = pushback[--pcnt];
-	        return 0;
-	}
-	if (!bcnt)
-	{
-		err = TCPIPReadTCP(ipid, 0, (Ref)buffer, 1024, &rr);
-		bcnt = rr.rrBuffCount;
-		bptr = 0;
+	for(;;) {
+		TCPIPPoll();
+		err = TCPIPStatusTCP(ipid, &sr);
 		if (err) return err;
-	}	
-	if (bcnt)
-	{
-		bcnt--;
-		*c = buffer[bptr++];
-		return 0;	
+
+		if (sr.srState == status) return 0;
+		GetNextEvent(keyDownMask | autoKeyMask, &event);
+		if (event.what != keyDownEvt) continue;
+		if (!(event.modifiers & appleKey))  continue;
+		if ((Word)event.message == '.') return -1;
+		//if ((Word)event.message == 'q') return -1;
+		//if ((Word)event.message == 'Q') return -1;
 	}
-	return 0xffff;
+	return 0;
 }
 
-void UngetChar(char c)
-{
-	pushback[pcnt++] = c;
-}
 

@@ -3,6 +3,46 @@
 dummy	start
 	end
 
+tables	privdata
+
+;
+; each line is 160 pixels.
+; top/bottom margin is 4 lines (4*160 pixels)
+
+rows	anop
+	dc i2'0*8*160+4*160+$2000'
+	dc i2'1*8*160+4*160+$2000'
+	dc i2'2*8*160+4*160+$2000'
+	dc i2'3*8*160+4*160+$2000'
+	dc i2'4*8*160+4*160+$2000'
+	dc i2'5*8*160+4*160+$2000'
+	dc i2'6*8*160+4*160+$2000'
+	dc i2'7*8*160+4*160+$2000'
+	dc i2'8*8*160+4*160+$2000'
+	dc i2'9*8*160+4*160+$2000'
+	dc i2'10*8*160+4*160+$2000'
+	dc i2'11*8*160+4*160+$2000'
+	dc i2'12*8*160+4*160+$2000'
+	dc i2'13*8*160+4*160+$2000'
+	dc i2'14*8*160+4*160+$2000'
+	dc i2'15*8*160+4*160+$2000'
+	dc i2'16*8*160+4*160+$2000'
+	dc i2'17*8*160+4*160+$2000'
+	dc i2'18*8*160+4*160+$2000'
+	dc i2'19*8*160+4*160+$2000'
+	dc i2'20*8*160+4*160+$2000'
+	dc i2'21*8*160+4*160+$2000'
+	dc i2'22*8*160+4*160+$2000'
+	dc i2'23*8*160+4*160+$2000'
+	dc i2'24*8*160+4*160+$2000'
+
+;
+; columns are simply x * 2
+;
+
+
+
+	end
 ;
 ;ReverseScrollRegion(line1, line2)
 ;
@@ -12,6 +52,8 @@ line1	equ 7
 _rtlb	equ 3
 _d	equ 1
 
+	using tables
+
 ;	brk $ea
 
 	phb
@@ -20,36 +62,28 @@ _d	equ 1
 	tcd
 
 	lda <line1
-	cmp #0
-	bcc exit
+	bmi exit
 
 	lda <line2
-	cmp #24
+	cmp #25
 	bcs exit
 
 	lda <line1
 	cmp <line2
 	bcs exit
 
-; a = (line2 - line1) * 8 * 160 - 1
+	asl line1
+	asl line2
 
-	lda <line2
-	sec
-	sbc <line1
-; a = a * 256 * 5
-	xba	; a = a * 256
-; 5x = 4x + x
+; count = (line2 - line1) * 8 * 160 - 1
 
-	pha ; save
-	asl a ; x2
-	asl a ; x4
-	clc
-	adc 1,s
-	sta 1,s
-	pla
-	dec a	; a = a - 1
+	ldx <line2
+	lda >rows,x
+	clc ; dec a 
+	ldx <line1
+	sbc >rows,x
+	pha
 
-	pha	; save
 
 ;
 ; mvn:
@@ -66,21 +100,14 @@ _d	equ 1
 ; x = src address = dest - 160*8
 
 
-	lda <line2
-	inc a
-	xba	; x256
-	pha	; save
-	asl a	; x 2
-	asl a	; x 4
-	clc
-	adc #$2000+4*160
-	adc 1,s
-	dec a			; - 1
-	sta 1,s			;store it...
+	ldx <line2
+	lda >rows,x
+	dec a
+	tay
 	sec
-	sbc #1280
-	tax			; src address
-	ply			; dest address
+	sbc #160*8
+	tax
+
 	pla			; length
 
 	mvp $e10000,$e10000
@@ -88,8 +115,8 @@ _d	equ 1
 ;
 ; now empty first line
 ;
-	pei (line1)
-	jsl ClearLine
+	ldx <line1
+	jsr _ClearLine
 
 exit	anop
 
@@ -113,6 +140,8 @@ exit	anop
 ;
 ScrollRegion	START
 
+	using tables
+
 line2	equ 9
 line1	equ 7
 _rtlb	equ 3
@@ -126,36 +155,28 @@ _d	equ 1
 	tcd
 
 	lda <line1
-	cmp #0
-	bcc exit
+	bmi exit
 
 	lda <line2
-	cmp #24
+	cmp #25
 	bcs exit
 
 	lda <line1
 	cmp <line2
 	bcs exit
 
+	asl line1
+	asl line2
+
 ; a = (line2 - line1) * 8 * 160 - 1
 
-	lda <line2
-	sec
-	sbc <line1
-; a = a * 256 * 5
-	xba	; a = a * 256
-; 5x = 4x + x
+	ldx <line2
+	lda >rows,x
+	clc ; dec a 
+	ldx <line1
+	sbc >rows,x
+	pha
 
-	pha ; save
-	asl a ; x2
-	asl a ; x4
-	clc
-	adc 1,s
-	sta 1,s
-	pla
-	dec a	; a = a - 1
-
-	pha	; save
 
 ; src address = $2000 + line1
 
@@ -166,18 +187,13 @@ _d	equ 1
 ; dest = $2000 + 640 + line1 * 8 * 160
 ; src = dest + 1280
 
-	lda <line1
-	xba	; x256
-	pha	; save
-	asl a	; x 2
-	asl a	; x 4
+	ldx <line1
+	lda >rows,x
+	tay
 	clc
-	adc #$2000+4*160
-	adc 1,s
-	sta 1,s			;store it...
-	adc #1280
-	tax			; src address
-	ply			; dest address
+	adc #8*160
+	tax
+
 	pla			; length
 
 	mvn $e10000,$e10000
@@ -185,8 +201,10 @@ _d	equ 1
 ;
 ; now empty last line
 ;
-	pei (line2)
-	jsl ClearLine
+	ldx line2
+	dex
+	dex
+	jsr _ClearLine
 
 exit	anop
 
@@ -210,6 +228,8 @@ exit	anop
 ;
 ScrollDown START
 
+	using tables
+
 	phb
 ;
 ; mvn:
@@ -232,8 +252,8 @@ ScrollDown START
 ;
 ; now empty outline #24
 ;
-	pea 23
-	jsl ClearLine
+	ldx #23
+	jsr _ClearLine
 
 
 	plb
@@ -241,44 +261,13 @@ ScrollDown START
 	
 	END
 
-;
-; ClearLine(int line_no); clears the line
-;
-ClearLine	START
 
-line	equ 9
-_rtlb	equ 5
-tmp	equ 3
-_d	equ 1
+; clear line in X (which has been pre-multiplied)
+_ClearLine	PRIVATE
 
+	using tables
 
-;	brk $ea
-	phb
-	pha
-
-	phd
-	tsc
-	tcd
-
-; line * 8 * 160 + 4*160
-; = line * 1024 + line * 256 + 4*160
-	lda <line
-
-	and #$00ff
-	xba		; x256
-	sta <tmp
-	asl a		; x 512
-	asl a		; x 1024
-	clc
-	adc <tmp
-	sta <tmp
-                             
-	clc
-	adc #4*160
-	sta <tmp
-	clc
-	adc #$2000	; graphics begin @ $e12000
-
+	lda >rows,x
 	tax
 	lda #0
 	sta >$e10000,x	; stick a 0 in there
@@ -286,85 +275,114 @@ _d	equ 1
 	iny
 	iny	
 
-
 	lda #8*160-3	; length -1
-	mvn $e10000,$e10000
-
-	lda <_rtlb+2
-	sta <_rtlb+4
-	lda <_rtlb
-	sta <_rtlb+2
-
-	pld
-	pla
-	pla
-	plb
-	rtl
-
+	mvn $e10000,$e10000	
+	rts
 	END
-
-
-;extern void ClearScreenFrom(int Y);
 ;
+; ClearLine(int line_no); clears the line
 ;
-;
-ClearScreenFrom	START
+ClearLine	START
 
-Y	equ 9
-_rtlb	equ 5
-tmp	equ 3
+line	equ 7
+_rtlb	equ 3
 _d	equ 1
 
 
 ;	brk $ea
 	phb
-	pha
 
 	phd
 	tsc
 	tcd
 
-; line * 8 * 160 + 4*160
-; = line * 1024 + line * 256 + 4*160
-	lda <Y
+	lda <line
+	cmp #24
+	bcs exit
 
-	and #$00ff
-	xba		; x256
-	sta <tmp
-	asl a		; x 512
-	asl a		; x 1024
-	clc
-	adc <tmp
-	sta <tmp
-
-	clc
-	adc #4*160
-	sta <tmp
-	clc
-	adc #$2000	; graphics begin @ $e12000
-
+	asl a
 	tax
-	lda #0
-	sta >$e10000,x	; stick a 0 in there
-	txy		; destination address (src + 2)
-	iny
-	iny
+	jsr _ClearLine
 
-
-	phy
-	lda #$9d00-2	; end of graphics + $2000
-	sec
-	sbc 1,s
-	ply
-
-; a now equals length to clear
-
-	mvn $e10000,$e10000
+exit	anop
 
 	lda <_rtlb+2
 	sta <_rtlb+4
 	lda <_rtlb
 	sta <_rtlb+2
+
+	pld
+	pla
+	plb
+	rtl
+
+	END
+
+
+;
+; ClearScreen2(int start, int end);
+;
+ClearScreen2	START
+
+	using tables
+
+line2	equ 9
+line1	equ 7
+_rtlb	equ 3
+_d	equ 1
+
+
+
+;	brk $ea
+	phb
+
+	phd
+	tsc
+	tcd
+
+	lda <line1
+	bmi exit
+
+	lda line2
+	cmp #25
+	bcs exit
+
+	lda <line1
+	cmp <line2
+	bcs exit
+
+	asl line1
+	asl line2
+
+	ldx <line2
+	lda >rows,x
+	clc
+	ldx <line1
+	sbc >rows,x
+	dec a
+	dec a
+	pha ; save length
+
+
+	ldx <line2
+	lda >rows,x
+	tax
+	tay
+	iny
+	iny
+
+	lda #0
+	sta >$e1000,x
+	pla ; restore length
+
+	mvn $e10000,$e10000
+
+
+exit	anop
+	lda <_rtlb+2
+	sta <line2
+	lda <_rtlb
+	sta <line1
 
 	pld
 	pla
@@ -375,22 +393,23 @@ _d	equ 1
 	END
 
 ;
-;extern void ClearLineFrom(int Y, int X);
+; ClearLine2(int line, int start, int end);
 ;
 
 ;
-; clear the end of the line from a given x & y
+; clear a section of a given line.
 ;
-ClearLineFrom	START
+ClearLine2	START
 
-X	equ	11
-Y	equ	9
-_rtlb	equ	5
-tmp	equ	3
+	using tables
+
+end	equ	11
+start	equ	9
+line	equ	7
+_rtlb	equ	3
 _d	equ	1
 
 	phb
-	pha
 	phd
 	tsc
 	tcd
@@ -400,64 +419,64 @@ _d	equ	1
 	plb
 
 
-;
-; if X is >= 80, skip it...
-;
-	lda <X
-	cmp #80
-	bcs exit
-
-	lda <Y
-	and #$00ff
-	xba		; x 256
-	sta <tmp
-	asl a		; x 512
-	asl a		; x 1024
-	clc
-	adc <tmp	; Y * 8 * 160
-	clc
-	adc #160*4
-	sta <tmp
-
-; each char takes up 2 bytes
-	lda <X
-	asl a		; x 2
-	clc
-	adc <tmp
-	sta <tmp
-
-	tax
-
-	lda #80
-	sec
-	sbc <X
-loop	anop
-	
-	dec a
+	lda start
 	bmi exit
 
-	stz $2000,x
-	stz $2000+160,x
-	stz $2000+320,x
-	stz $2000+480,x
-	stz $2000+640,x
-	stz $2000+800,x
-	stz $2000+960,x
-	stz $2000+1120,x
+	lda end
+	cmp #81
+	bcs exit
+
+	lda start
+	cmp end
+	bcs exit
+
+	sec
+	lda end
+	sbc start
+;	bmi exit
+;	beq exit
+	tay ; counter
+
+	asl start ; x 2
+	asl line
+
+	ldx <line
+	lda >rows,x
+
+	clc
+	adc start
+	tax
+
+
+loop	anop
+	
+	stz |0,x
+	stz |160,x
+	stz |320,x
+	stz |480,x
+	stz |640,x
+	stz |800,x
+	stz |960,x
+	stz |1120,x
 	inx
 	inx
-	bra loop
+	dey
+	bne loop
 
 exit	anop
+
+	lda <_rtlb+2
+	sta <end
+	lda <_rtlb
+	sta <start
 
 	pld
 	pla
 	pla
-	sta 3,s
 	pla
-	sta 3,s
+
 	plb
-	rtl	
+	rtl
 	END
 
 
@@ -533,242 +552,214 @@ ClearScreen	START
 	plb
 	plb
 	lda #0
-	ldy #0
+	ldy #32000
 loop	anop
-	sta $2000,y
-	iny
-	iny
-	cpy #32000
-	bcc loop
+	sta |$2000-2,y
+	dey
+	dey
+	bne loop
 	plb
 	rtl
 
-;
-; this will, in 1 atomic action, blast the screen with 0
-;
-
-	phb
-	lda #0
-	sta >$e12000
-	lda #32000-3	;length
-	ldx #$2000
-	ldy #$2002
-	mvn $e10000,$e10000
-
-	plb
-	rtl
 	END
 ;
 ; draw a character at the current Xpos & Ypos
 ;
 ;
-
+; PrintChar(x, y, char, andMask, xorMask)
 PrintChar	START
 
-andMask	equ 11
-char	equ 9
-_rtlb	equ 5
-pos	equ 3
+	using tables
+
+xorMask	equ 15
+andMask	equ 13
+char	equ 11
+yy	equ 9
+xx	equ 7
+_rtlb	equ 3
 _d	equ 1
 
 ;	brk $ea
 	phb
-	pha
 
 	phd
 	tsc
 	tcd
 
 ; sanity check on Xpos && Ypos
-	lda Xpos
-	cmp #80
-	bcc _ok
-	lda Ypos
-	cmp #24
-	bcc _ok
-	brl exit
-_ok	anop
 
+	ldx xx
+	cpx #80
+	bcc ok2
+
+exit2	anop
+	brl exit
+
+ok2	anop
+	ldy yy
+	cpy #24
+	bcs exit2
+
+	lda <char
+	cmp #$7f
+	bcs space
+	sec
+	sbc #$20
+	bmi space
+	asl a		; x2
+	asl a		; x4
+	asl a		; x8
+	asl a		; x16
+	sta char
+	bra ok
+
+
+space	anop
+	stz <char
+
+ok	anop
 
 	pea $e1e1
 	plb
 	plb
 
-;
-; each line has a width of 160 pixels
-;
-; start drawing the letter at $e12000 + (Ypos x 160 x 8) + Xpos
+	asl xx
+	asl yy
 
-
-; 160 * 8 = 1240 = 1024 + 256
-	lda >Ypos
-	and #$00ff
-	xba		; x 256
-	sta <pos	; store temporarily
-
-	asl a		; x 512
-	asl a		; x 1024
+	ldx yy
+	lda >rows,x
 	clc
-	adc <pos
-	sta <pos
-	
-;
-; lower 1/2 row additional
-;
-	clc
-	adc #160*4
-	sta <pos
+	adc xx
+	tay 
 
-;
-; for x offset, 160 bytes per row / 80 chars = 2 bytes/letter
-;
-	lda >Xpos
-	asl a		; x 2
-	clc
-	adc <pos
-	sta <pos
-	tay
 
 ;
 ; $e12000 + pos = location to start drawing the character
 ;
 	
-	
-	lda <char
-
-	cmp #$20	; smallest printing char
-	bcc exit	; not printable....
-	cmp #127	; 126 is biggest
-	bcs exit	; not printable
-
 ;
 ; each char takes up 16 bytes :. the offset is (char - $20) * 16
 ;
 
-	sec
-	sbc #$20
-	asl a		; x2
-	asl a		; x4
-	asl a		; x8
-	asl a		; x16
-
-	tax
+	ldx char
 	lda >CHAR_SPACE,x
-	eor >xor_mask
+	eor <xorMask
 	and <andMask
-	sta |$2000,y	; blast it to the screen
+	sta |0,y	; blast it to the screen
 	
 	lda >CHAR_SPACE+2,x
-	eor >xor_mask
+	eor <xorMask
 	and <andMask
-	sta |$2000+160,y      
+	sta |160,y      
 	
 	lda >CHAR_SPACE+4,x
-	eor >xor_mask
+	eor <xorMask
 	and <andMask
-	sta |$2000+320,y      
+	sta |320,y      
 
 	lda >CHAR_SPACE+6,x
-	eor >xor_mask
+	eor <xorMask
 	and <andMask
-	sta |$2000+480,y      
+	sta |480,y      
 
 	lda >CHAR_SPACE+8,x
-	eor >xor_mask
+	eor <xorMask
 	and <andMask
-	sta |$2000+640,y      
+	sta |640,y      
 
 	lda >CHAR_SPACE+10,x
-	eor >xor_mask
+	eor <xorMask
 	and <andMask
-	sta |$2000+800,y      
+	sta |800,y      
 
 	lda >CHAR_SPACE+12,x
-	eor >xor_mask
+	eor <xorMask
 	and <andMask
-	sta |$2000+960,y      
+	sta |960,y      
 
 	lda >CHAR_SPACE+14,x
-	eor >xor_mask
+	eor <xorMask
 	and <andMask
-	sta |$2000+1120,y     
+	sta |1120,y     
 
 exit	anop
 
 	lda <_rtlb+2
-	sta <andMask
+	sta <xorMask
 	lda <_rtlb
-	sta <char
+	sta <andMask
 	pld
    	pla
+	pla
+	pla
 	pla
 	pla
 	plb
 	rtl
 	end
 	
-Cursor	START
+;Cursor	START
 
-StartCursor	ENTRY
+;StartCursor	ENTRY
 
-	pha
-;	~ReadBParam #$2f
-	pla
-	sta blinkRate
+;	pha
+;;	~ReadBParam #$2f
+;	pla
+;	sta blinkRate
 
-	stz savedX
-	stz savedY
+;	stz savedX
+;	stz savedY
 
-;	~SetHeartBeat #CursorHB
-	rtl
-
-
-StopCursor	ENTRY
-;	~DelHeartBeat #CursorHB
-	rtl
-
-notSafe		ENTRY
-		ds 2
-blinkRate	ds 2
-savedX		ds 2
-savedY		ds 2
-
-CursorHB	anop
-	dc i4'0'
-count	dc i2'30'
-	dc h'5AA5'
-
-	longa off
-
-	phb
-	phk
-	plb
-	php
-
-;	long ai
-	lda notSafe
-	bne exit
-
-	lda Xpos
-	cmp savedX
-	bne moved
-	lda Ypos
-	cmp savedY
-	bne moved
-	bra exit
-
-moved	jsr drawCursor
+;;	~SetHeartBeat #CursorHB
+;	rtl
 
 
-exit	anop
+;StopCursor	ENTRY
+;;	~DelHeartBeat #CursorHB
+;	rtl
 
-	plp
-	plb
-	clc
-	rtl
+;notSafe		ENTRY
+;		ds 2
+;blinkRate	ds 2
+;savedX		ds 2
+;savedY		ds 2
 
-drawCursor	anop
+;CursorHB	anop
+;	dc i4'0'
+;count	dc i2'30'
+;	dc h'5AA5'
+
+;	longa off
+
+;	phb
+;	phk
+;	plb
+;	php
+
+;;	long ai
+;	lda notSafe
+;	bne exit
+
+;	lda Xpos
+;	cmp savedX
+;	bne moved
+;	lda Ypos
+;	cmp savedY
+;	bne moved
+;	bra exit
+
+;moved	jsr drawCursor
+
+
+;exit	anop
+
+;	plp
+;	plb
+;	clc
+;	rtl
+
+;drawCursor	anop
 	
-	rts
+;	rts
 
-	END
+;	END
