@@ -372,7 +372,7 @@ _d	equ 1
 	iny
 
 	lda #0
-	sta >$e1000,x
+	sta >$e10000,x
 	pla ; restore length
 
 	mvn $e10000,$e10000
