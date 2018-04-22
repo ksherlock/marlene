@@ -84,15 +84,12 @@ _d	equ 1
 	sbc >rows,x
 	pha
 
-
 ;
 ; mvn:
-; while (--a != -1)
-; 	dest[y++] = dest[x++];
+; do { src[y++] = dest[x++]; } while (--c != 0xffff)
 ;
 ; mvp:
-; while(--a != -1)
-;  dest[y--] = dest[x--];
+; do { src[y--] = dest[x--]; } while (--c != 0xffff)
 
 
 
@@ -364,7 +361,7 @@ _d	equ 1
 	pha ; save length
 
 
-	ldx <line2
+	ldx <line1
 	lda >rows,x
 	tax
 	tay

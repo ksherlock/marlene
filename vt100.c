@@ -35,6 +35,9 @@ int __x;
 int __y;
 
 
+#define __brk() asm { brk 0xea }
+
+
 static unsigned saved_cursor[2]; // saved cursor position
 static unsigned window[2];
 static unsigned and_mask;
@@ -373,6 +376,7 @@ static void erase_line(void) {
 
 static void erase_screen(void) {
 	unsigned i;
+
 	for (i = 0; i < parm_count; ++i) {
 		switch(parms[i]) {
 			case 0:
