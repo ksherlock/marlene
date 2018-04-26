@@ -40,9 +40,14 @@ rows	anop
 ; columns are simply x * 2
 ;
 
-
-
 	end
+
+cursor_data	privdata
+
+cursor_offset	dc i2'0'
+cursor_bits	dc i2'0'
+	end
+
 ;
 ;ReverseScrollRegion(line1, line2)
 ;
@@ -477,66 +482,6 @@ exit	anop
 	END
 
 
-;
-; void DrawCursor(int Xpos, int Ypos, int state);
-;
-;
-DrawCursor	START
-
-
-state	equ	13
-Ypos	equ	11
-Xpos	equ	9
-_rtlb	equ	5
-tmp	equ	3
-_d	equ	1
-
-	phb
-	pha		;tmp
-	phd
-	tsc
-	tcd
-
-
-	lda <Ypos
-	and #$00ff
-	xba		; x 256
-	sta <tmp
-	asl a		; x 512
-	asl a		; x 1024
-	clc
-	adc <tmp	; a = Y * 1280
-	
-	adc #11*160	; last row of it
-	sta <tmp
-	adc <Xpos	; + X * 2
-	adc <Xpos
-	tax
-
-	lda #$ffff	; assume to draw it
-	ldy <state
-	bne draw
-        lda #0		; nope!
-	
-draw	anop
-
-	sta >$e12000,x
-
-
-
-	pld
-	pla		;tmp
-	pla
-	sta 5,s
-	pla
-	sta 5,s
-	pla
-	plb
-	rtl
-
-	END
-
-
 
 ;
 ; clear the screen to black (or whatnot)
@@ -695,6 +640,87 @@ exit	anop
 	rtl
 	end
 	
+
+HideCursor	start
+	using cursor_data
+
+	ldx cursor_offset
+	beq exit
+
+	lda cursor_bits
+	sta >$e10000,x
+	stz cursor_offset
+
+exit	rtl
+
+	end
+
+ShowCursor	start
+	using cursor_data
+	using tables
+
+
+yy	equ 9
+xx	equ 7
+_rtlb	equ 3
+_d	equ 1
+
+
+	phb
+
+	phd
+	tsc
+	tcd
+
+
+	ldx cursor_offset
+	beq off
+
+* hide old cursor.
+	lda cursor_bits
+	sta >$e10000,x
+	stz cursor_offset
+
+off	anop
+
+	lda <xx
+	cmp #80
+	bcs exit
+	lda <yy
+	cmp #24
+	bcs exit
+
+	asl xx
+	asl yy
+
+	ldx yy
+	lda rows,x
+	clc
+	adc xx
+	adc #160*7
+	sta cursor_offset
+	tax
+	lda >$e10000,x
+	sta cursor_bits
+	lda #-1
+	sta >$e10000,x
+
+exit	anop
+
+
+	lda _rtlb+2
+	sta yy
+	lda _rtlb
+	sta xx
+
+	pld
+	pla
+	pla
+	plb
+	rtl
+
+	end
+
 ;Cursor	START
 
 ;StartCursor	ENTRY

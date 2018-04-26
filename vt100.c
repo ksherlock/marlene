@@ -28,6 +28,9 @@ extern void ClearLine2(unsigned line, unsigned start, unsigned end);
 
 extern void SetCursor(unsigned x, unsigned y);
 
+extern void HideCursor(void);
+extern void ShowCursor(unsigned x, unsigned y);
+
 extern pascal void SysBeep2(Word) inline(0x3803,dispatcher);
 
 
@@ -90,6 +93,8 @@ void vt100_init(void)
 	parm_count = 0;
 	private = 0;
 	state = 0;
+
+	HideCursor();
 }
 
 #if 0
@@ -476,6 +481,7 @@ static void do_control(char c) {
 void vt100_process(const unsigned char *buffer, unsigned buffer_size) {
 
 	unsigned i;
+	HideCursor();
 	for (i = 0; i < buffer_size; ++i) {
 		unsigned char c = buffer[i] & 0x7f;
 		if (c == 0 || c == 0x7f) continue;
@@ -612,6 +618,8 @@ void vt100_process(const unsigned char *buffer, unsigned buffer_size) {
 
 		}
 	}
+
+	ShowCursor(__x, __y);
 }
 
 
