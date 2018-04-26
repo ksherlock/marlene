@@ -81,27 +81,27 @@ static void screen_init(void) {
 #define YELLOW	0x0ff0
 #define BLACK	0x0000
 #define BLUE	0x000f
-#define GREEN	0x00f0
+#define GREEN	0x0080
 #define RED		0x0f00
 
 	static ColorTable ct =
 	{
-		BLACK, // background
+		WHITE, // background
 		RED,   // underline / blink
 		BLUE,  // bold
 		GREEN, // foreground
 
-		BLACK, 
+		WHITE, 
 		RED,
 		BLUE,
 		GREEN,
 
-		BLACK, 
+		WHITE, 
 		RED,	
 		BLUE, 
 		GREEN, 
 
-		BLACK, 
+		WHITE, 
 		RED,
 		BLUE,
 		GREEN,
@@ -112,18 +112,17 @@ static void screen_init(void) {
 	// linearize memory, disable shadowing.
 	asm
 	{
-		lda #0x00C1
+		phb
+		pea 0xe0e0
+		plb
+		plb
 		sep #0x20
-		ora >0xe0c029
-		sta >0xe0c029
+		lda #0xC1
+		tsb 0xc029
+		lda #0x08
+		tsb 0xc035
 		rep #0x20
-
-		lda #0x0008
-		sep #0x20
-		ora >0xe0c035
-		sta >0xe0c035
-		rep #0x20
-
+		plb
 	}
 
 	SetMasterSCB(0xc080);
