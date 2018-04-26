@@ -210,7 +210,7 @@ static void scrolling_region(void) {
 	--bottom;
 
 
-	if (top < bottom && bottom < 24) {
+	if ((top < bottom) && (bottom < 24)) {
 		window[0] = top;
 		window[1] = bottom;
 		__y = DECOM ? top : 0;
@@ -539,7 +539,7 @@ void vt100_process(const unsigned char *buffer, unsigned buffer_size) {
 
 			case st_lbracket:
 				private = 0;
-				parm_count = 1;
+				parm_count = 0;
 				parms[0] = 0;
 				parms[1] = 0;
 				if (c == '?') { private = 1; state = st_parm; continue; }
@@ -551,6 +551,7 @@ void vt100_process(const unsigned char *buffer, unsigned buffer_size) {
 				/* fall through */	
 			case st_lbracket2:
 				lbracket2:
+				++parm_count;
 				switch (c) {
 					case 'A': cursor_up(); break;
 					case 'B': cursor_down(); break;
