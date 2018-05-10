@@ -109,7 +109,7 @@ static void screen_init(void) {
 
 	unsigned i;
 
-	// linearize memory, disable shadowing.
+	// linearize memory, enable shadowing.
 	asm
 	{
 		phb
@@ -120,14 +120,13 @@ static void screen_init(void) {
 		lda #0xC1
 		tsb 0xc029
 		lda #0x08
-		tsb 0xc035
+		trb 0xc035
 		rep #0x20
 		plb
 	}
 
 	SetMasterSCB(0xc080);
 	SetAllSCBs(0xc080);
-	//InitColorTable(ct);
 	for (i = 0; i < 16; i++)
 		SetColorTable(i, ct);
 
@@ -179,8 +178,9 @@ int main(int argc, char **argv) {
 	Word iLoaded;
 	Word iConnected;
 	Word iStarted;
-	Handle dp;
-
+	Handle dpHandle = NULL;
+	Handle shrHandle = NULL;
+	Handle shdHandle = NULL;
 	Word err;
 	int ok;
 
@@ -199,10 +199,24 @@ int main(int argc, char **argv) {
 	SetOutGlobals(0x7f, 0);
 
 
-	dp = NewHandle(0x0100, MyID,
+	dpHandle = NewHandle(0x0100, MyID,
 		attrBank | attrPage |attrNoCross | attrFixed | attrLocked,
 		0x000000);
-	EMStartUp((Word)*dp, 0x14, 0, 0, 0, 0, MyID);
+
+	shdHandle = NewHandle(0x8000, MyID,
+		attrAddr | attrFixed | attrLocked,
+		(void *)0x012000);
+
+	shrHandle = NewHandle(0x8000, MyID,
+		attrAddr | attrFixed | attrLocked,
+		(void *)0xe12000);
+
+	if (!dpHandle || !shdHandle || !shrHandle) {
+		ErrWriteCString("Unable to allocate memory.\r\n");
+		goto _exit;
+	}
+
+	EMStartUp((Word)*dpHandle, 0x14, 0, 0, 0, 0, MyID);
 
 
 	// todo: -vt52 -> start in vt52 mode (DECANM = 0)
@@ -372,7 +386,10 @@ _exit:
 
 
 	EMShutDown();
-	DisposeHandle(dp);
+	DisposeHandle(dpHandle);
+	DisposeHandle(shdHandle);
+	DisposeHandle(shrHandle);
+
 	GrafOff();
 	TextShutDown();
 	QuitGS(&qDCB);
