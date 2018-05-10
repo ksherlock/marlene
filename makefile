@@ -1,5 +1,5 @@
 PROG	= marlene
-OBJS	= main.o vt100.o telnet.o ansi.o chars.o marinetti.o display.o
+OBJS	= marlene.o vt100.o telnet.o ansi.o chars.o marinetti.o display.o
 
 OPTIMIZE *= 79
 
@@ -11,7 +11,8 @@ $(PROG): $(OBJS)
 	$(CC) $(CFLAGS) $(OBJS) -o $@
 
 
-main.o:		main.c
+marlene.o:		marlene.c
+darlene.o:		darlene.c
 vt100.o:	vt100.c
 ansi.o:		ansi.asm
 chars.o:	chars.asm
