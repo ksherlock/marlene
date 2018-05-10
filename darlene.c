@@ -90,7 +90,7 @@ forkpty2(int *amaster, char *name, struct sgttyb *sg, struct winsize *winp) {
 
 #pragma databank 1
 static void sigchild(int sig, int x) {
-	PostEvent(0x8000,0);
+	PostEvent(app4Mask,0);
 }
 #pragma databank 0
 
@@ -108,20 +108,27 @@ int main(int argc, char **argv) {
 	}
 
 	for(;;) {
+		static char buffer[1024];
 		int fio = 0;
 		ioctl(fd, FIONREAD, &fio);
-		if (fio > 256) fio = 256;
+		if (fio > sizeof(buffer)) fio = sizeof(buffer);
 		if (fio > 0) {
 			fio = read(fd, buffer, fio);
 			if (fio > 0) vt100_process(buffer, fio);
 		}
-		GetNextEvent(...);
 
+		GetNextEvent(everyEvent, &event);
+		if (event.what == keyDownEvt) {
 
-		if (fio <= 0) {
+		}
+
+		if (event.what == app4Mask) {
+			/* child signal received! */
 			union wait wt;
 			ok = waitpid(pid, &wt, WNOHANG);
-			if (ok <= 0)
+			if (ok <= 0) continue;
+			display_str("\r\nChild exited.\r\n");
+			break;
 		}
 		asm { cop 0x7f }
 	}

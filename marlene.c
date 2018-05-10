@@ -183,6 +183,7 @@ int main(int argc, char **argv) {
 	Handle shdHandle = NULL;
 	Word err;
 	int ok;
+	unsigned i;
 
 
 	iLoaded = iStarted = iConnected = false;
@@ -196,7 +197,7 @@ int main(int argc, char **argv) {
 
 
 	// todo:keypad flag of some sort?
-	for (i = 1; i < argv; ++i) {
+	for (i = 1; i < argc; ++i) {
 		char *cp = argv[i];
 		if (cp[0] != '-') break;
 		if (strcmp(cp, "--vt52") == 0) {
@@ -330,7 +331,7 @@ int main(int argc, char **argv) {
 			vt100_process(buffer, buffer_size);
 		}
 
-		GetNextEvent(keyDownMask | autoKeyMask, &event);
+		GetNextEvent(everyEvent, &event);
 		if (event.what == keyDownEvt) {
 
 			unsigned char key = event.message;
@@ -394,7 +395,7 @@ _exit:
 
 
 	// flush q
-	while (GetNextEvent(keyDownMask | autoKeyMask, &event)) ;
+	FlushEvents(everyEvent, 0);
 	display_cstr("\n\rPress any key to exit.\n\r");
 	while (!GetNextEvent(keyDownMask | autoKeyMask, &event)) ;
 
