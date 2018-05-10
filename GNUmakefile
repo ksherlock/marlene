@@ -8,11 +8,15 @@ OPTIMIZE ?= 79
 CFLAGS = -w-1 -O $(OPTIMIZE)
 ASMFLAGS =
 
+.PHONY: all clean clobber
+
+all: marlene
+
 marlene: o/marlene.a $(OBJS)
-	$(CC) $(OBJS) -o $@
+	$(CC) $^ -o $@
 
 darlene: o/darlene.a $(OBJS)
-	$(CC) $(OBJS) -o $@
+	$(CC) $^ -o $@
 
 
 
