@@ -194,6 +194,30 @@ int main(int argc, char **argv) {
 	kernStatus();
 	if (!_toolErr) __gno = true;
 
+
+	// todo:keypad flag of some sort?
+	for (i = 1; i < argv; ++i) {
+		char *cp = argv[i];
+		if (cp[0] != '-') break;
+		if (strcmp(cp, "--vt52") == 0) {
+
+		} else if (strcmp(cp, "--vt100") == 0) {
+
+		} else {
+			ErrWriteCString("Unknown option: ");
+			ErrWriteCString(cp);
+			ErrWriteCString("\r\n");
+			return 1;
+		}
+	}
+	argv += i;
+	argc -= i;
+
+	if (argc != 1) {
+		ErrWriteCString("Usage: marlene host[:port]\r\n");
+		return 1;
+	}
+
 	TextStartUp();
 	SetOutputDevice(1,3);
 	SetOutGlobals(0x7f, 0);
@@ -218,14 +242,6 @@ int main(int argc, char **argv) {
 
 	EMStartUp((Word)*dpHandle, 0x14, 0, 0, 0, 0, MyID);
 
-
-	// todo: -vt52 -> start in vt52 mode (DECANM = 0)
-	// todo:keypad flag of some sort?
-
-	if (argc != 2) {
-		ErrWriteCString("Usage: marlene host[:port]\r\n");
-		goto _exit;
-	}
 
 	screen_init();
 
@@ -261,7 +277,7 @@ int main(int argc, char **argv) {
 	}
 	// marinetti is now connected
 
-	if (!ResolveHost(argv[1], &cvt)) {
+	if (!ResolveHost(argv[0], &cvt)) {
 		display_cstr("Unable to resolve address.\r\n");
 		goto _exit;
 	}
@@ -286,8 +302,6 @@ int main(int argc, char **argv) {
 	display_cstr("Connected.\n\r");
 
 	telnet_init();
-
-	//fd = open ("tcp.log", O_TRUNC | O_WRONLY | O_CREAT, 0777);
 
 	for(;;) {
 		static rrBuff rr;
