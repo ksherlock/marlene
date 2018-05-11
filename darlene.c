@@ -11,19 +11,28 @@
 
 #include <errno.h>
 #include <fcntl.h>
-#include <gno/gno.h>
-#include <gno/kerntool.h>
 #include <libutil.h>
 #include <sgtty.h>
 #include <signal.h>
 #include <string.h>
 #include <sys/ioctl.compat.h>
 #include <sys/ioctl.h>
+#include <sys/wait.h>
 #include <unistd.h>
+
+#include <gno/gno.h>
+#include <gno/kerntool.h>
+
+extern void vt100_init(void);
+extern void vt100_process(const unsigned char *buffer, unsigned buffer_size);
+extern void vt100_event(EventRecord *event);
 
 extern void screen_init(void);
 extern void screen_on(void);
 extern void screen_off(void);
+
+void display_pstr(const char *);
+void display_cstr(const char *);
 
 
 static char out_buffer[1024];
@@ -68,7 +77,7 @@ openpty2(int *amaster, int *aslave, char *name, struct sgttyb *sg, struct winsiz
 		master = open(ptyname, O_RDWR);
 		if (master < 0) continue;
 
-		slave = open(ttyname, O_RDRW);
+		slave = open(ttyname, O_RDWR);
 		if (slave < 0) {
 			close(master);
 			continue;
@@ -95,9 +104,9 @@ static int _child(int master, int slave) {
 
 	close(master);
 
-	logintty(slave);
+	login_tty(slave);
 
-	execve(":bin:gsh", "gsh -f");
+	_execve(":bin:gsh", "gsh -f");
 	write(slave, "Unable to exec.\r\n", 27);
 	close(slave);
 	return 1;
@@ -131,8 +140,11 @@ static void sigchild(int sig, int x) {
 
 int main(int argc, char **argv) {
 
+	static EventRecord event;
+
 	int pid;
 	unsigned i;
+	Word MyID;
 
 	Handle dpHandle = NULL;
 	Handle shrHandle = NULL;
@@ -164,12 +176,8 @@ int main(int argc, char **argv) {
 	argv += i;
 
 
-	signal(SIGCHLD,sigchild);
-	pid = forkpty2(&master, NULL, NULL, NULL);
-	if ( pid < 0) {
-		ErrWriteCString("Unable to forkpty.\r\n");
-		return 1;
-	}
+
+	MyID = MMStartUp();
 
 	dpHandle = NewHandle(0x0100, MyID,
 		attrBank | attrPage |attrNoCross | attrFixed | attrLocked,
@@ -193,14 +201,18 @@ int main(int argc, char **argv) {
 
 	EMStartUp((Word)*dpHandle, 0x14, 0, 0, 0, 0, MyID);
 
-
 	screen_init();
 
 	vt100_init();
 
+	signal(SIGCHLD,sigchild);
+	pid = forkpty2(&master, NULL, NULL, NULL);
+	if ( pid < 0) {
+		display_cstr("Unable to forkpty.\r\n");
+		goto _exit;
+	}
 
-	screen_init();
-	vt100_init();
+
 
 	for(;;) {
 		static char buffer[1024];
@@ -251,9 +263,10 @@ int main(int argc, char **argv) {
 			if (event.what == app4Mask) {
 				/* child signal received! */
 				union wait wt;
+				int ok;
 				ok = waitpid(pid, &wt, WNOHANG);
 				if (ok <= 0) continue;
-				display_str("\r\nChild exited.\r\n");
+				display_cstr("\r\nChild exited.\r\n");
 				break;
 			}
 		}

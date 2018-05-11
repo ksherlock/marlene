@@ -1,4 +1,7 @@
-OBJS	= o/vt100.a o/telnet.a o/ansi.a o/chars.a o/marinetti.a o/display.a o/screen.a
+COMMON_OBJS	= o/vt100.a o/ansi.a o/chars.a o/display.a o/screen.a
+
+MARLENE_OBJS = o/marlene.a o/telnet.a o/marinetti.a 
+DARLENE_OBJS = o/darlene.a
 
 CC = occ --gno
 
@@ -11,11 +14,11 @@ ASMFLAGS =
 
 all: marlene darlene
 
-marlene: o/marlene.a $(OBJS)
-	$(CC) $^ -o $@
+marlene: $(MARLENE_OBJS) $(COMMON_OBJS)
+	$(CC) -o $@ $^ 
 
-darlene: o/darlene.a $(OBJS)
-	$(CC) $^ -o $@
+darlene: $(DARLENE_OBJS) $(COMMON_OBJS)
+	$(CC) -lutil -o $@ $^
 
 
 

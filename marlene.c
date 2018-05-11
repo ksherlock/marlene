@@ -23,16 +23,6 @@
 #include "telnet.h"
 #include "marinetti.h"
 
-extern pascal void GrafOn(void) inline(0x0a04, dispatcher);
-extern pascal void GrafOff(void) inline(0x0b04, dispatcher);
-
-extern pascal void SetColorTable(Word, ColorTable) inline(0x0E04,dispatcher);
-extern pascal void SysBeep2(Word) inline(0x3803,dispatcher);
-extern pascal void SetAllSCBs(Word) inline(0x1404,dispatcher);
-extern pascal void SetMasterSCB(Word) inline(0x1604,dispatcher);
-extern pascal void InitColorTable(ColorTable) inline(0x0D04,dispatcher);
-
-
 
 void display_pstr(const char *);
 void display_cstr(const char *);
@@ -50,13 +40,7 @@ extern void screen_on(void);
 extern void screen_off(void);
 
 
-
-Word MyID;
-Word __gno;
-
-
 #define ESC "\x1b"
-
 
 
 #pragma databank 1
@@ -127,6 +111,8 @@ int main(int argc, char **argv) {
 	int ok;
 	unsigned i;
 	int mf = 0;
+	Word MyID;
+	Word __gno;
 
 
 	__gno = false;

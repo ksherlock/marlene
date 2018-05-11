@@ -1,12 +1,10 @@
-#pragma noroot
 
 #include <string.h>
-#include "Marinetti.h"
 
 
 struct errlist {
-	Word Error;
-	Word MsgLen;
+	unsigned Error;
+	unsigned MsgLen;
 	const char *Msg;
 };
 
@@ -32,7 +30,7 @@ static struct errlist errors[] = {
 	_ERR(0x0e,"tcperrConRefused"),
 };
 
-void display_err(Word err) {
+void display_err(unsigned err) {
 
 	if (err == 0 || err >= 0x0f) return;
 	--err;
