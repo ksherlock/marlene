@@ -122,19 +122,21 @@ forkpty2(int *amaster, char *name, struct sgttyb *sg, struct winsize *winp) {
 	ok = openpty2(&master, &slave, name, sg, winp);
 	if (ok < 0) return -1;
 
-	pid = fork2(_child, 256, 0, NULL, 4, master, slave);
+	pid = fork2(_child, 512, 0, "darlene child", 2, master, slave);
 	if (pid < 0) {
 		close(master);
 		close(slave);
 		return -1;
 	}
+	*amaster = master;
 	close(slave);
 	return pid;
 }
 
 #pragma databank 1
 static void sigchild(int sig, int x) {
-	PostEvent(app4Mask,0);
+	//display_cstr("\r\nsigchild\r\n");
+	PostEvent(app4Evt,0);
 }
 #pragma databank 0
 
@@ -217,7 +219,8 @@ int main(int argc, char **argv) {
 	for(;;) {
 		static char buffer[1024];
 		int fio = 0;
-		ioctl(master, FIONREAD, &fio);
+		int ok;
+		ok = ioctl(master, FIONREAD, &fio);
 		if (fio > sizeof(buffer)) fio = sizeof(buffer);
 		if (fio > 0) {
 			fio = read(master, buffer, fio);
@@ -260,10 +263,9 @@ int main(int argc, char **argv) {
 				}
 			}
 
-			if (event.what == app4Mask) {
+			if (event.what == app4Evt) {
 				/* child signal received! */
 				union wait wt;
-				int ok;
 				ok = waitpid(pid, &wt, WNOHANG);
 				if (ok <= 0) continue;
 				display_cstr("\r\nChild exited.\r\n");
