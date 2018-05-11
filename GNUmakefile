@@ -1,5 +1,4 @@
-PROG	= marlene
-OBJS	= o/vt100.a o/telnet.a o/ansi.a o/chars.a o/marinetti.a o/display.a
+OBJS	= o/vt100.a o/telnet.a o/ansi.a o/chars.a o/marinetti.a o/display.a o/screen.a
 
 CC = occ --gno
 
@@ -10,7 +9,7 @@ ASMFLAGS =
 
 .PHONY: all clean clobber
 
-all: marlene
+all: marlene darlene
 
 marlene: o/marlene.a $(OBJS)
 	$(CC) $^ -o $@
@@ -25,6 +24,7 @@ darlene.o: darlene.c
 vt100.o: vt100.c CLAGS+=-r
 marinetti.o: marinetti.c CLAGS+=-r
 telnet.o: telnet.c CLAGS+=-r
+screen.o: screen.c CLAGS+=-r
 ansi.o: ansi.asm
 chars.o: chars.asm
 
@@ -42,4 +42,4 @@ o/%.a : %.asm | o
 clean:
 	$(RM) -rf o
 clobber: clean
-	$(RM) -f $(PROG)
+	$(RM) -f marlene darlene

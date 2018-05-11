@@ -3,20 +3,55 @@
  *
  */
 
-#include <texttool.h>
-#include <gsos.h>
 #include <Event.h>
-#include <fcntl.h>
+#include <gsos.h>
 #include <Locator.h>
 #include <Memory.h>
+#include <texttool.h>
 
-
-#include <sgtty.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <gno/gno.h>
+#include <gno/kerntool.h>
 #include <libutil.h>
-#include <unistd.h>
+#include <sgtty.h>
 #include <signal.h>
-#include <sys/ioctl.h>
+#include <string.h>
 #include <sys/ioctl.compat.h>
+#include <sys/ioctl.h>
+#include <unistd.h>
+
+extern void screen_init(void);
+extern void screen_on(void);
+extern void screen_off(void);
+
+
+static char out_buffer[1024];
+static char out_buffer_size = 0;
+
+static int master = -1;
+
+static void flush(void) {
+	if (out_buffer_size) {
+		write(master, out_buffer, out_buffer_size);
+		out_buffer_size = 0;
+	}
+}
+
+
+
+void send(char *data, unsigned size) {
+	
+	if (out_buffer_size + size > sizeof(out_buffer)) {
+		flush();
+	}
+	if (size > sizeof(out_buffer) / 2) {
+		write(master, data, size);
+		return;
+	}
+	memcpy(out_buffer + out_buffer_size, data, size);
+	out_buffer_size += size;
+}
 
 
 int 
@@ -96,43 +131,151 @@ static void sigchild(int sig, int x) {
 
 int main(int argc, char **argv) {
 
-	int fd;
 	int pid;
+	unsigned i;
+
+	Handle dpHandle = NULL;
+	Handle shrHandle = NULL;
+	Handle shdHandle = NULL;
+
+	master = -1;
+	kernStatus();
+	if (_toolErr) {
+		ErrWriteCString("GNO/ME required.\r\n");
+		return 1;
+	}
+
+	for (i = 1; i < argc; ++i) {
+		char *cp = argv[i];
+		if (cp[0] != '-') break;
+		if (strcmp(cp, "--vt52") == 0) {
+
+		} else if (strcmp(cp, "--vt100") == 0) {
+
+		} else {
+			ErrWriteCString("Unknown option: ");
+			ErrWriteCString(cp);
+			ErrWriteCString("\r\n");
+			return 1;
+		}
+	}
+
+	argc -= i;
+	argv += i;
 
 
 	signal(SIGCHLD,sigchild);
-	pid = forkpty2(&fd, NULL, NULL, NULL);
+	pid = forkpty2(&master, NULL, NULL, NULL);
 	if ( pid < 0) {
 		ErrWriteCString("Unable to forkpty.\r\n");
 		return 1;
 	}
 
+	dpHandle = NewHandle(0x0100, MyID,
+		attrBank | attrPage |attrNoCross | attrFixed | attrLocked,
+		0x000000);
+
+	shdHandle = NewHandle(0x8000, MyID,
+		attrAddr | attrFixed | attrLocked,
+		(void *)0x012000);
+
+	shrHandle = NewHandle(0x8000, MyID,
+		attrAddr | attrFixed | attrLocked,
+		(void *)0xe12000);
+
+	if (!dpHandle || !shdHandle || !shrHandle) {
+		ErrWriteCString("Unable to allocate memory.\r\n");
+		if (dpHandle) DisposeHandle(dpHandle);
+		if (shdHandle) DisposeHandle(shdHandle);
+		if (shrHandle) DisposeHandle(shrHandle);
+		return 1;
+	}
+
+	EMStartUp((Word)*dpHandle, 0x14, 0, 0, 0, 0, MyID);
+
+
+	screen_init();
+
+	vt100_init();
+
+
+	screen_init();
+	vt100_init();
+
 	for(;;) {
 		static char buffer[1024];
 		int fio = 0;
-		ioctl(fd, FIONREAD, &fio);
+		ioctl(master, FIONREAD, &fio);
 		if (fio > sizeof(buffer)) fio = sizeof(buffer);
 		if (fio > 0) {
-			fio = read(fd, buffer, fio);
+			fio = read(master, buffer, fio);
 			if (fio > 0) vt100_process(buffer, fio);
 		}
 
-		GetNextEvent(everyEvent, &event);
-		if (event.what == keyDownEvt) {
+		if (GetNextEvent(everyEvent, &event)) {
+			fio = 1;
+			if (event.what == keyDownEvt) {
 
-		}
+				unsigned char key = event.message;
 
-		if (event.what == app4Mask) {
-			/* child signal received! */
-			union wait wt;
-			ok = waitpid(pid, &wt, WNOHANG);
-			if (ok <= 0) continue;
-			display_str("\r\nChild exited.\r\n");
-			break;
+				if (event.modifiers & appleKey) {
+					switch (key) {
+					case 'Q':	// quit
+					case 'q':
+						goto _exit1;
+						break;
+					case 'V':	// paste...
+					case 'v':
+						break;
+					case 'Z':	// suspend (gnome)
+					case 'z': {
+							/* EMStartUp puts the tty in RAW mode. */
+							static struct sgttyb sb;
+							gtty(1,&sb);
+							sb.sg_flags &= ~RAW;
+							stty(1,&sb);
+							screen_off();
+							Kkill(Kgetpid(), SIGSTOP, &errno);
+							sb.sg_flags |= RAW;
+							stty(1,&sb);
+							screen_on();  
+						}
+						break;
+					}
+				
+				} else {
+					vt100_event(&event);
+				}
+			}
+
+			if (event.what == app4Mask) {
+				/* child signal received! */
+				union wait wt;
+				ok = waitpid(pid, &wt, WNOHANG);
+				if (ok <= 0) continue;
+				display_str("\r\nChild exited.\r\n");
+				break;
+			}
 		}
-		asm { cop 0x7f }
+		flush();
+		if (fio <= 0) asm { cop 0x7f }
 	}
+_exit1:
+	flush();
+	if (master >= 0) close(master);
 
-	if (fd >= 0) close(fd);
+_exit:
+	// flush q
+	FlushEvents(everyEvent, 0);
+	display_cstr("\n\rPress any key to exit.\n\r");
+	while (!GetNextEvent(keyDownMask | autoKeyMask, &event)) ;
+
+
+	EMShutDown();
+	DisposeHandle(dpHandle);
+	DisposeHandle(shdHandle);
+	DisposeHandle(shrHandle);
+
+	screen_off();
 	return 0;
 }

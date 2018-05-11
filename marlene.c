@@ -1,28 +1,27 @@
-#include <tcpip.h>
+#include <Event.h>
+#include <gsos.h>
 #include <Locator.h>
 #include <Memory.h>
+#include <tcpip.h>
 #include <texttool.h>
-#include <gsos.h>
-#include <Event.h>
-#include <fcntl.h>
 
-#include <sgtty.h>
+
+#include <ctype.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <gno/gno.h>
 #include <gno/kerntool.h>
-#include <unistd.h>
-#include <sys/fcntl.h>
+#include <sgtty.h>
 #include <signal.h>
-#include <sys/ioctl.h>
-#include <sys/ioctl.compat.h>
-
 #include <stdlib.h>
-#include <ctype.h>
 #include <string.h>
+#include <sys/fcntl.h>
+#include <sys/ioctl.compat.h>
+#include <sys/ioctl.h>
+#include <unistd.h>
 
 #include "telnet.h"
-
-extern void ClearScreen(void);
+#include "marinetti.h"
 
 extern pascal void GrafOn(void) inline(0x0a04, dispatcher);
 extern pascal void GrafOff(void) inline(0x0b04, dispatcher);
@@ -33,9 +32,6 @@ extern pascal void SetAllSCBs(Word) inline(0x1404,dispatcher);
 extern pascal void SetMasterSCB(Word) inline(0x1604,dispatcher);
 extern pascal void InitColorTable(ColorTable) inline(0x0D04,dispatcher);
 
-
-Word ResolveHost(const char *name, cvtRecPtr cvt);
-int WaitForStatus(word ipid, word status_mask);
 
 
 void display_pstr(const char *);
@@ -49,6 +45,9 @@ extern void vt100_init(void);
 extern void vt100_process(const unsigned char *buffer, unsigned buffer_size);
 extern void vt100_event(EventRecord *event);
 
+extern void screen_init(void);
+extern void screen_on(void);
+extern void screen_off(void);
 
 
 
@@ -76,63 +75,7 @@ void printCallBack(const char *msg) {
 #pragma databank 0
 
 
-static void screen_init(void) {
-#define WHITE	0x0fff
-#define YELLOW	0x0ff0
-#define BLACK	0x0000
-#define BLUE	0x000f
-#define GREEN	0x0080
-#define RED		0x0f00
 
-	static ColorTable ct =
-	{
-		WHITE, // background
-		RED,   // underline / blink
-		BLUE,  // bold
-		GREEN, // foreground
-
-		WHITE, 
-		RED,
-		BLUE,
-		GREEN,
-
-		WHITE, 
-		RED,	
-		BLUE, 
-		GREEN, 
-
-		WHITE, 
-		RED,
-		BLUE,
-		GREEN,
-	};
-
-	unsigned i;
-
-	// linearize memory, enable shadowing.
-	asm
-	{
-		phb
-		pea 0xe0e0
-		plb
-		plb
-		sep #0x20
-		lda #0xC1
-		tsb 0xc029
-		lda #0x08
-		trb 0xc035
-		rep #0x20
-		plb
-	}
-
-	SetMasterSCB(0xc080);
-	SetAllSCBs(0xc080);
-	for (i = 0; i < 16; i++)
-		SetColorTable(i, ct);
-
-	ClearScreen();
-	GrafOn();
-}
 
 static char out_buffer[1024];
 static char out_buffer_size = 0;
@@ -166,6 +109,8 @@ unsigned buffer_size;
 unsigned char buffer[2048]; // 1500 is normal MTU size?
 
 
+
+
 int main(int argc, char **argv) {
 
 	static EventRecord event;
@@ -175,22 +120,22 @@ int main(int argc, char **argv) {
 	static QuitRecGS qDCB = {2, 0, 0x4000};
 
 
-	Word iLoaded;
-	Word iConnected;
-	Word iStarted;
 	Handle dpHandle = NULL;
 	Handle shrHandle = NULL;
 	Handle shdHandle = NULL;
 	Word err;
 	int ok;
 	unsigned i;
+	int mf = 0;
 
 
-	iLoaded = iStarted = iConnected = false;
 	__gno = false;
 	ipid = -1;
 
 	MyID = MMStartUp();
+	TextStartUp();
+	SetOutputDevice(1,3);
+	SetOutGlobals(0x7f, 0);
 
 	kernStatus();
 	if (!_toolErr) __gno = true;
@@ -219,11 +164,6 @@ int main(int argc, char **argv) {
 		return 1;
 	}
 
-	TextStartUp();
-	SetOutputDevice(1,3);
-	SetOutGlobals(0x7f, 0);
-
-
 	dpHandle = NewHandle(0x0100, MyID,
 		attrBank | attrPage |attrNoCross | attrFixed | attrLocked,
 		0x000000);
@@ -238,7 +178,12 @@ int main(int argc, char **argv) {
 
 	if (!dpHandle || !shdHandle || !shrHandle) {
 		ErrWriteCString("Unable to allocate memory.\r\n");
-		goto _exit;
+
+		if (dpHandle) DisposeHandle(dpHandle);
+		if (shdHandle) DisposeHandle(shdHandle);
+		if (shrHandle) DisposeHandle(shrHandle);
+
+		return 1;
 	}
 
 	EMStartUp((Word)*dpHandle, 0x14, 0, 0, 0, 0, MyID);
@@ -248,34 +193,13 @@ int main(int argc, char **argv) {
 
 	vt100_init();
 
-
-	TCPIPStatus();
-	if (_toolErr) {
-		display_cstr("Loading Marinetti...\n\r");
-		LoadOneTool(0x36, 0x200); //load Marinetti
-		if (_toolErr) {
-			display_cstr("Unable to load Marinetti.\r\n");
-			goto _exit;
-		}
-		iLoaded = true;
+	mf = StartUpTCP(printCallBack);
+	if (mf < 0) {
+		display_cstr("Marinetti 3.0b3 or greater is required.\r\n");
+		goto _exit;
 	}
 
-	// Marinetti now loaded
-	if (!TCPIPStatus()) {
-		display_cstr("Starting Marinetti...\n\r");
-		TCPIPStartUp();
-		iStarted = true;
-	}
 
-	if (!TCPIPGetConnectStatus()) {
-		display_cstr("Connecting Marinetti...\n\r");
-		TCPIPConnect(printCallBack);
-		if (_toolErr) {
-			display_cstr("Unable to establish network connection.\r\n");
-			goto _exit;
-		}
-		iConnected = true;
-	}
 	// marinetti is now connected
 
 	if (!ResolveHost(argv[0], &cvt)) {
@@ -297,7 +221,7 @@ int main(int argc, char **argv) {
 	// wait for the connection to occur.
 	ok = WaitForStatus(ipid, 1 << TCPSESTABLISHED);
 	if (ok > 0) display_err(ok);
-	if (ok != 0) goto _exit2;
+	if (ok != 0) goto _exit;
 
 
 	display_cstr("Connected.\n\r");
@@ -349,15 +273,14 @@ int main(int argc, char **argv) {
 				case 'z':
 					if (__gno) {
 						static struct sgttyb sb;
-						static int err;
 						gtty(1,&sb);
 						sb.sg_flags &= ~RAW;
 						stty(1,&sb);
-						GrafOff();
-						Kkill(Kgetpid(), SIGSTOP, &err);
+						screen_off();
+						Kkill(Kgetpid(), SIGSTOP, &errno);
 						sb.sg_flags |= RAW;
 						stty(1,&sb);
-						GrafOn();   
+						screen_on();
 					}
 					break;
 				}
@@ -377,21 +300,12 @@ _exit1:
 	TCPIPCloseTCP(ipid);
 	WaitForStatus(ipid, (1 << TCPSCLOSED) | (1 << TCPSTIMEWAIT));
 
-_exit2:
-
 
 _exit:
 
 	if (ipid != -1) TCPIPLogout(ipid);
 
-	if (iConnected)
-		TCPIPDisconnect(false, printCallBack);
-
-	if (iStarted)
-		TCPIPShutDown();
-
-	if (iLoaded)
-		UnloadOneTool(0x36);
+	if (mf > 0) ShutDownTCP(mf, false, printCallBack);
 
 
 	// flush q
@@ -405,9 +319,9 @@ _exit:
 	DisposeHandle(shdHandle);
 	DisposeHandle(shrHandle);
 
-	GrafOff();
+	screen_off();
 	TextShutDown();
-	QuitGS(&qDCB);
+	//QuitGS(&qDCB);
 	return 0;
 }
 

@@ -2,7 +2,10 @@
 #pragma lint -1
 
 #include <Event.h>
-#include "Marinetti.h"
+#include <tcpip.h>
+#include <locator.h>
+
+#include "marinetti.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -64,7 +67,7 @@ EventRecord event;
 			free(pstr);
 			return false;
 		}
-		while (dnr.DNRStatus == DNRPending) {
+		while (dnr.DNRstatus == DNR_Pending) {
 			TCPIPPoll();
 			GetNextEvent(keyDownMask | autoKeyMask, &event);
 			if ((event.what == keyDownEvt)
@@ -74,8 +77,8 @@ EventRecord event;
 				break;
 			}
 		}
-		if (dnr.DNRStatus == DNROK) {
-			cvt->cvtIPAddress = dnr.DNRIPAddress;
+		if (dnr.DNRstatus == DNR_OK) {
+			cvt->cvtIPAddress = dnr.DNRIPaddress;
 			cvt->cvtPort = port;
 			free(pstr);
 			return true;
@@ -88,7 +91,7 @@ EventRecord event;
 }
 
 int WaitForStatus(word ipid, word status_mask) {
-	static srBuffer sr;
+	static srBuff sr;
 	EventRecord event;
 	Word err;
 	unsigned bits;
@@ -111,4 +114,63 @@ int WaitForStatus(word ipid, word status_mask) {
 	return 0;
 }
 
+int StartUpTCP(displayPtr fx)
+{
+  word status;
+  word flags = 0;
+  
+  // TCPIP is an init, not a tool, so it should always
+  // be loaded.
+  
+  status = TCPIPStatus();
+  if (_toolErr) {
+    LoadOneTool(54, 0x0300);
+    if (_toolErr == toolVersionErr) return kVersionError;
+    if (_toolErr) return kLoadError;
+
+    status = 0;
+    flags |= kLoaded;
+  }
+
+
+  // require 3.0b3
+  if (TCPIPLongVersion() < 0x03006003) {
+    if (flags & kLoaded)
+      UnloadOneTool(54);
+
+    return kVersionError;     
+  }
+
+  if (!status) {
+    TCPIPStartUp();
+    if (_toolErr) return kLoadError;
+    flags |= kStarted;
+  }
+
+  status = TCPIPGetConnectStatus();
+  if (!status) {
+    TCPIPConnect(fx);
+    flags |= kConnected;
+  }
+
+  return flags;
+}
+
+
+void ShutDownTCP(int flags, Boolean force, displayPtr fx) {
+  if (flags <= 0) return;
+
+  if (flags & kConnected)
+  {
+    TCPIPDisconnect(force, fx);
+    if (_toolErr) return;
+  }
+  if (flags & kStarted) {
+    TCPIPShutDown();
+    if (_toolErr) return;
+  }
+  if (flags & kLoaded) {
+    UnloadOneTool(54);
+  }
+}
 
