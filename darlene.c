@@ -7,6 +7,7 @@
 #include <gsos.h>
 #include <Locator.h>
 #include <Memory.h>
+#include <shell.h>
 #include <texttool.h>
 
 #include <errno.h>
@@ -19,6 +20,7 @@
 #include <sys/ioctl.h>
 #include <sys/wait.h>
 #include <unistd.h>
+#include <pwd.h>
 
 #include <gno/gno.h>
 #include <gno/kerntool.h>
@@ -101,10 +103,17 @@ openpty2(int *amaster, int *aslave, char *name, struct sgttyb *sg, struct winsiz
 
 #define _write(fd, msg) write(fd, msg, sizeof(msg) - 1);
 
+static SetGSPB term_var = {
+	3, "\x04\x00TERM", "\x05\x00vt100", 1
+};
+
+static char **child_argv = NULL;
+static struct passwd *pwd = NULL;
+static char *whoami = "";
 #pragma databank 1
 static int _child(int master, int slave) {
 
-	//static char buffer[256];
+	static unsigned zero = 0;
 	int ok;
 	close(master);
 
@@ -115,45 +124,23 @@ static int _child(int master, int slave) {
 		close(slave);
 		return 1;
 	}
-#if 0
 
-	dup2(slave, STDIN_FILENO);
-	dup2(slave, STDOUT_FILENO);
-	dup2(slave, STDERR_FILENO);
+	/* work around GNO bug where environment leaks into parent */
+	PushVariablesGS(&zero);
 
-	SetInputDevice(3,(long)STDIN_FILENO);
-	SetOutputDevice(3,(long)STDOUT_FILENO);
-	SetErrorDevice(3,(long)STDERR_FILENO);
+	SetGS(&term_var);
 
-
-
-	if (slave > STDERR_FILENO) close(slave);
-	_write(STDOUT_FILENO, "here i am\r\n");
-
-
-	ok = tcnewpgrp(STDIN_FILENO);
-	if (ok < 0) _write(STDERR_FILENO, "tcnewpgrp failed.\r\n");
-	ok = settpgrp(STDIN_FILENO);
-	if (ok < 0) _write(STDERR_FILENO, "settpgrp failed.\r\n");
-	if (ioctl(STDIN_FILENO, TIOCSCTTY, (char *)NULL) < 0) {
-		_write(STDERR_FILENO, "ioctl TIOCSCTTY failed.\r\n");	
-	}
-#endif
-
-
-#if 0
-	_execve("/bin/cat", "cat");
-
-	for(;;) {
-		ok = read(STDIN_FILENO, buffer, sizeof(buffer));
-		if (ok <= 0) break;
-		write(STDOUT_FILENO, buffer, ok);
+	if (child_argv) {
+		execvp(child_argv[0], child_argv);
+	} else {
+		static char buffer[64] = "login -f ";
+		strcpy(buffer + 9, whoami);
+		/* should sniff the correct TERM value from /etc/ttys */
+		_execve(":usr:bin:login", buffer);
+		_execve(":usr:sbin:login", buffer);
+		_execve(":bin:gsh", "gsh");
 	}
 
-	//_execve(":bin:gsh", "gsh -f");
-	//_execve(":bin:cat", "cat");
-#endif
-	_execve(":bin:gsh", "gsh -f");
 	_write(STDERR_FILENO, "_execve failed.\r\n");
 	return 1;
 }
@@ -207,13 +194,17 @@ int main(int argc, char **argv) {
 		return 1;
 	}
 
+	term_var.value = "\x05\x00vt100";
+	child_argv = NULL;
 	for (i = 1; i < argc; ++i) {
 		char *cp = argv[i];
 		if (cp[0] != '-') break;
 		if (strcmp(cp, "--vt52") == 0) {
-
+			term_var.value = "\x04\x00vt52";
 		} else if (strcmp(cp, "--vt100") == 0) {
-
+			term_var.value = "\x05\x00vt100";
+		} else if (strcmp(cp,"--") == 0) {
+			break;
 		} else {
 			ErrWriteCString("Unknown option: ");
 			ErrWriteCString(cp);
@@ -225,7 +216,14 @@ int main(int argc, char **argv) {
 	argc -= i;
 	argv += i;
 
+	if (argc) {
+		child_argv = malloc(argc * 4 + 4);
+		/* <= argc so trailing NULL copies */
+		for(i = 0; i <= argc; ++i) child_argv[i] = argv[i];
+	}
 
+	pwd = getpwuid(getuid());
+	whoami = pwd ? pwd->pw_name : "";
 
 	MyID = MMStartUp();
 
