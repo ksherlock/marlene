@@ -19,6 +19,7 @@ marlene: $(MARLENE_OBJS) $(COMMON_OBJS)
 
 darlene: $(DARLENE_OBJS) $(COMMON_OBJS)
 	$(CC) -lutil -o $@ $^
+	iix chtyp -a 0xdc00 $@
 
 
 

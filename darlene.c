@@ -73,7 +73,9 @@ openpty2(int *amaster, int *aslave, char *name, struct sgttyb *sg, struct winsiz
 	int slave;
 	unsigned i;
 	for (i = 0; i < 16; ++i) {
-		ptyname[5] = ttyname[5] = "0123456789abcdef"[i];
+		char c = "0123456789abcdef"[i];
+		ptyname[5] = c;
+		ttyname[5] = c; 
 		master = open(ptyname, O_RDWR);
 		if (master < 0) continue;
 
@@ -97,20 +99,65 @@ openpty2(int *amaster, int *aslave, char *name, struct sgttyb *sg, struct winsiz
 	return -1;
 }
 
-
+#define _write(fd, msg) write(fd, msg, sizeof(msg) - 1);
 
 #pragma databank 1
 static int _child(int master, int slave) {
 
+	//static char buffer[256];
+	int ok;
 	close(master);
 
-	login_tty(slave);
 
+	ok = login_tty(slave);
+	if (ok < 0) {
+		_write(slave, "login_tty failed.\r\n");
+		close(slave);
+		return 1;
+	}
+#if 0
+
+	dup2(slave, STDIN_FILENO);
+	dup2(slave, STDOUT_FILENO);
+	dup2(slave, STDERR_FILENO);
+
+	SetInputDevice(3,(long)STDIN_FILENO);
+	SetOutputDevice(3,(long)STDOUT_FILENO);
+	SetErrorDevice(3,(long)STDERR_FILENO);
+
+
+
+	if (slave > STDERR_FILENO) close(slave);
+	_write(STDOUT_FILENO, "here i am\r\n");
+
+
+	ok = tcnewpgrp(STDIN_FILENO);
+	if (ok < 0) _write(STDERR_FILENO, "tcnewpgrp failed.\r\n");
+	ok = settpgrp(STDIN_FILENO);
+	if (ok < 0) _write(STDERR_FILENO, "settpgrp failed.\r\n");
+	if (ioctl(STDIN_FILENO, TIOCSCTTY, (char *)NULL) < 0) {
+		_write(STDERR_FILENO, "ioctl TIOCSCTTY failed.\r\n");	
+	}
+#endif
+
+
+#if 0
+	_execve("/bin/cat", "cat");
+
+	for(;;) {
+		ok = read(STDIN_FILENO, buffer, sizeof(buffer));
+		if (ok <= 0) break;
+		write(STDOUT_FILENO, buffer, ok);
+	}
+
+	//_execve(":bin:gsh", "gsh -f");
+	//_execve(":bin:cat", "cat");
+#endif
 	_execve(":bin:gsh", "gsh -f");
-	write(slave, "Unable to exec.\r\n", 27);
-	close(slave);
+	_write(STDERR_FILENO, "_execve failed.\r\n");
 	return 1;
 }
+#undef _write
 #pragma databank 0
 
 int
@@ -136,6 +183,7 @@ forkpty2(int *amaster, char *name, struct sgttyb *sg, struct winsize *winp) {
 #pragma databank 1
 static void sigchild(int sig, int x) {
 	//display_cstr("\r\nsigchild\r\n");
+
 	PostEvent(app4Evt,0);
 }
 #pragma databank 0
@@ -277,7 +325,7 @@ int main(int argc, char **argv) {
 	}
 _exit1:
 	flush();
-	if (master >= 0) close(master);
+	if (master > 0) close(master);
 
 _exit:
 	// flush q
