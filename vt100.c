@@ -170,15 +170,15 @@ static void cursor_position(void) {
 	if (y) --y;
 	if (x) --x;
 
-	__x = x;
 	if (x >= 80) x = 79;
 	if (DECOM) {
-		__y = window[0] + y;
-		if (__y > window[1]) __y = window[1];
+		y = window[0] + y;
+		if (y > window[1]) y = window[1];
 	} else {
-		__y = y;
-		if (__y >= 24) __y = 23;
+		if (y >= 24) y = 23;
 	}
+	__x = x;
+	__y = y;
 }
 
 static void cursor_position_vt52(void) {
@@ -545,6 +545,12 @@ void vt100_process(const unsigned char *buffer, unsigned buffer_size) {
 				if (c == '?') { private = 1; state = st_parm; continue; }
 				if (isdigit(c)) {
 					parms[0] = c - '0';
+					state = st_parm;
+					break;
+				}
+				if (c == ';') {
+					++parm_count;
+					parms[parm_count] = 0;
 					state = st_parm;
 					break;
 				}
