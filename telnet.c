@@ -108,12 +108,16 @@ void telnet_process(void) {
 		IAC, SE
 	};
 
-	static unsigned char telopt_ttype[] = {
+	static unsigned char telopt_ttype_vt100[] = {
 		IAC, SB, TELOPT_TTYPE, TELQUAL_IS,
 		'V', 'T', '1', '0', '0',
 		IAC, SE
 	};
-
+	static unsigned char telopt_ttype_vt52[] = {
+		IAC, SB, TELOPT_TTYPE, TELQUAL_IS,
+		'V', 'T', '5', '2',
+		IAC, SE
+	};
 
 
 	/* don't need to process if no state, no IACs in buffer */
@@ -186,7 +190,7 @@ void telnet_process(void) {
 						send(telopt_tspeed, sizeof(telopt_tspeed));
 						break;
 					case TELOPT_TTYPE:
-						send(telopt_ttype, sizeof(telopt_ttype));
+						send(telopt_ttype_vt100, sizeof(telopt_ttype_vt100));
 						break;
 
 					default:

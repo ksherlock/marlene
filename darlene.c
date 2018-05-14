@@ -25,9 +25,7 @@
 #include <gno/gno.h>
 #include <gno/kerntool.h>
 
-extern void vt100_init(void);
-extern void vt100_process(const unsigned char *buffer, unsigned buffer_size);
-extern void vt100_event(EventRecord *event);
+#include "vt100.h"
 
 extern void screen_init(void);
 extern void screen_on(void);
@@ -182,7 +180,7 @@ int main(int argc, char **argv) {
 	int pid;
 	unsigned i;
 	Word MyID;
-
+	unsigned vt100_flags = vtDEFAULT;
 	Handle dpHandle = NULL;
 	Handle shrHandle = NULL;
 	Handle shdHandle = NULL;
@@ -199,12 +197,14 @@ int main(int argc, char **argv) {
 	for (i = 1; i < argc; ++i) {
 		char *cp = argv[i];
 		if (cp[0] != '-') break;
-		if (strcmp(cp, "--vt52") == 0) {
+		if (strcmp(cp, "--") == 0) {
+			break;
+		} else if (strcmp(cp, "--vt52") == 0) {
 			term_var.value = "\x04\x00vt52";
+			vt100_flags &= ~vtDECANM;
 		} else if (strcmp(cp, "--vt100") == 0) {
 			term_var.value = "\x05\x00vt100";
-		} else if (strcmp(cp,"--") == 0) {
-			break;
+			vt100_flags |= vtDECANM;
 		} else {
 			ErrWriteCString("Unknown option: ");
 			ErrWriteCString(cp);
@@ -251,7 +251,7 @@ int main(int argc, char **argv) {
 
 	screen_init();
 
-	vt100_init();
+	vt100_init(vt100_flags);
 
 	signal(SIGCHLD,sigchild);
 	pid = forkpty2(&master, NULL, NULL, NULL);

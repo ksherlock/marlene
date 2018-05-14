@@ -2,10 +2,11 @@
  * This handles vt100 commands.
  *
  */
-#pragma noroot
 
 #include <Event.h>
 #include <ctype.h>
+
+#include "vt100.h"
 
 #define ESC "\x1b"
 #define send_str(x) send((const unsigned char *)x, sizeof(x)-1)
@@ -63,8 +64,11 @@ static unsigned parm_count;
 static unsigned private;
 static unsigned state;
 
-void vt100_init(void)
+static unsigned initial_state = vtDEFAULT;
+
+void vt100_init(unsigned flags)
 {
+
 	__x = 0;
 	__y = 0;
 	saved_cursor[0] = 0;
@@ -74,14 +78,26 @@ void vt100_init(void)
 	and_mask = 0xffff;
 	xor_mask = 0x0000;
 
-	DECANM = 1;
-	DECAWM = 1;
-	DECCKM = 0;
-	DECKPAM = 0;
-	DECCOLM = 80;
-	DECOM = 0;
-	DECSCNM = 0;
-	LNM = 0;
+	initial_state = flags;
+	if (flags == -1) {
+		DECANM = 1;
+		DECAWM = 1;
+		DECCKM = 0;
+		DECKPAM = 0;
+		DECCOLM = 80;
+		DECOM = 0;
+		DECSCNM = 0;
+		LNM = 0;
+	} else {
+		DECANM = flags & vtDECANM;
+		DECAWM = flags & vtDECAWM;
+		DECCKM = flags & vtDECCKM;
+		DECKPAM = flags & vtDECKPAM;
+		DECCOLM = flags & vtDECCOLM ? 132 : 80;
+		DECOM = flags & vtDECOM;
+		DECSCNM = flags & vtDECSCNM;
+		LNM = flags & vtLNM;
+	}
 
 	tabs[0] = 0x8080;
 	tabs[1] = 0x8080;
@@ -521,7 +537,7 @@ void vt100_process(const unsigned char *buffer, unsigned buffer_size) {
 					case '8': restore_cursor(); break;
 					case '=': DECKPAM = 1; break;
 					case '>': DECKPAM = 0; break;
-					case 'c': vt100_init(); ClearScreen(); break;
+					case 'c': vt100_init(initial_state); ClearScreen(); break;
 					case '1': case '2': /* vt105 graphic stuff */ break;
 					default:
 						break;

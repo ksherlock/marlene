@@ -22,7 +22,7 @@
 
 #include "telnet.h"
 #include "marinetti.h"
-
+#include "vt100.h"
 
 void display_pstr(const char *);
 void display_cstr(const char *);
@@ -31,9 +31,6 @@ void display_err(Word);
 extern void telnet_init(void);
 extern void telnet_process(void);
 
-extern void vt100_init(void);
-extern void vt100_process(const unsigned char *buffer, unsigned buffer_size);
-extern void vt100_event(EventRecord *event);
 
 extern void screen_init(void);
 extern void screen_on(void);
@@ -113,7 +110,7 @@ int main(int argc, char **argv) {
 	int mf = 0;
 	Word MyID;
 	Word __gno;
-
+	unsigned vt100_flags = vtDEFAULT;
 
 	__gno = false;
 	ipid = -1;
@@ -131,10 +128,12 @@ int main(int argc, char **argv) {
 	for (i = 1; i < argc; ++i) {
 		char *cp = argv[i];
 		if (cp[0] != '-') break;
-		if (strcmp(cp, "--vt52") == 0) {
-
+		if (strcmp(cp, "--") == 0) {
+			break;
+		} else if (strcmp(cp, "--vt52") == 0) {
+			vt100_flags &= ~vtDECANM;
 		} else if (strcmp(cp, "--vt100") == 0) {
-
+			vt100_flags |= vtDECANM;
 		} else {
 			ErrWriteCString("Unknown option: ");
 			ErrWriteCString(cp);
@@ -177,7 +176,7 @@ int main(int argc, char **argv) {
 
 	screen_init();
 
-	vt100_init();
+	vt100_init(vt100_flags);
 
 	mf = StartUpTCP(printCallBack);
 	if (mf < 0) {
