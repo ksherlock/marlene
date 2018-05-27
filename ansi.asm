@@ -1,7 +1,13 @@
 	case on
+	mcopy ansi.mac
 
 dummy	start
 	end
+
+RDMAINRAM	gequ $E0C002         ; Read from main memory
+RDCARDRAM	gequ $E0C003         ; Read from auxiliary memory
+WRMAINRAM	gequ $E0C004         ; Write to main memory
+WRCARDRAM	gequ $E0C005         ; Write to auxiliary memory
 
 tables	privdata
 
@@ -640,6 +646,137 @@ exit	anop
 	rtl
 	end
 	
+
+; FillChar(char, andMask, xorMask)
+	gen on
+FillChar	START
+
+	using tables
+
+	subroutine (2:char,2:andMask,2:xorMask),(16:cdata)
+
+xx	equ andMask
+yy	equ xorMask
+
+	lda <char
+	cmp #$7f
+	bcs space
+	sec
+	sbc #$20
+	bmi space
+	asl a		; x2
+	asl a		; x4
+	asl a		; x8
+	asl a		; x16
+	tax
+	bra ok
+
+
+space	anop
+	ldx #0 ; char
+
+ok	anop
+
+; pre-calc the char mask to data.
+
+	lda CHAR_SPACE,x
+	eor <xorMask
+	and <andMask
+	sta cdata
+
+	lda CHAR_SPACE+2,x
+	eor <xorMask
+	and <andMask
+	sta cdata+2
+
+	lda CHAR_SPACE+4,x
+	eor <xorMask
+	and <andMask
+	sta cdata+4
+
+	lda CHAR_SPACE+6,x
+	eor <xorMask
+	and <andMask
+	sta cdata+6
+
+	lda CHAR_SPACE+8,x
+	eor <xorMask
+	and <andMask
+	sta cdata+8
+
+	lda CHAR_SPACE+10,x
+	eor <xorMask
+	and <andMask
+	sta cdata+10
+
+	lda CHAR_SPACE+12,x
+	eor <xorMask
+	and <andMask
+	sta cdata+12
+
+	lda CHAR_SPACE+14,x
+	eor <xorMask
+	and <andMask
+	sta cdata+14
+
+
+	pea $e1e1
+	plb
+	plb
+
+
+	lda #24
+	sta yy
+
+	ldx #0*8*160+4*160+$2000
+yloop	anop
+
+	lda cdata+0
+	jsr one_line
+
+	lda cdata+2
+	jsr one_line
+
+	lda cdata+4
+	jsr one_line
+
+	lda cdata+6
+	jsr one_line
+
+	lda cdata+8
+	jsr one_line
+
+	lda cdata+10
+	jsr one_line
+
+	lda cdata+12
+	jsr one_line
+
+	lda cdata+14
+	jsr one_line
+
+	dec yy
+	bne yloop
+
+exit	anop
+
+	return
+
+	end	
+
+one_line private
+; a = character data
+; x = memory address 
+
+	ldy #80
+loop anop
+	sta |$0000,x
+	inx
+	inx
+	dey
+	bne loop
+	rts
+	end
 
 HideCursor	start
 	using cursor_data

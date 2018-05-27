@@ -21,6 +21,7 @@ extern unsigned buffer_size;
 extern void ReverseScrollRegion(unsigned, unsigned);
 extern void ScrollRegion(unsigned, unsigned);
 extern void PrintChar(unsigned x, unsigned y, unsigned the_char, unsigned andMask, unsigned eorMask);
+extern void FillChar(unsigned the_char, unsigned andMask, unsigned eorMask);
 
 extern void ClearScreen(void);
 extern void ClearScreen2(unsigned start, unsigned end);
@@ -547,6 +548,9 @@ void vt100_process(const unsigned char *buffer, unsigned buffer_size) {
 
 			case st_pound:
 				/* #8 -> fill with Es */
+				if (c == '8') {
+					FillChar('E', 0xffff, 0x0000);
+				}
 				state = st_text; break;
 			case st_lparen:
 			case st_rparen:

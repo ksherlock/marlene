@@ -1,0 +1,245 @@
+	macro
+&l	_ldy &r
+&l	anop
+	aif "&r"="@a",.a
+	aif "&r"="@x",.x
+	aif "&r"="@y",.y
+	ldy &r
+	ago .y
+.a
+	tay
+	ago .y
+.x
+	txy
+	ago .y
+.y
+	mend
+ macro
+&l subroutine &parms,&locals
+&l anop
+ gbla &totallen
+ gbla &worklen
+ gbla &returnlen
+&worklen seta 0
+&totallen seta 0
+&returnlen seta 4
+ lclc &len
+ lclc &p
+ lcla &i
+
+ phb
+
+ aif c:&locals=0,.doparms
+.dolocals
+&i seta 1
+.bb
+&p setc &locals(&i)
+&len amid &p,2,1
+ aif "&len"=":",.cc
+&len amid &p,1,2
+&p amid &p,4,l:&p-3
+ ago .dd
+.cc
+&len amid &p,1,1
+&p amid &p,3,l:&p-2
+.dd
+&p equ &worklen+1
+&worklen seta &worklen+&len
+&i seta &i+1
+ aif &i<=c:&locals,^bb
+.doparms
+
+ aif c:&parms=0,.e
+&i seta 1
+.b
+&p setc &parms(&i)
+&len amid &p,2,1
+ aif "&len"=":",.c
+&len amid &p,1,2
+&p amid &p,4,l:&p-3
+ ago .d
+.c
+&len amid &p,1,1
+&p amid &p,3,l:&p-2
+.d
+&p equ &totallen+&returnlen+1+&worklen
+&totallen seta &totallen+&len
+&i seta &i+1
+ aif &i<=c:&parms,^b
+.e
+ tsc
+ aif &worklen=0,.f
+ sec
+ sbc #&worklen
+ tcs
+.f
+ phd
+ tcd
+ mend
+
+
+ macro
+&l lsubroutine  &parms,&locals
+&l anop
+ gbla &totallen
+ gbla &worklen
+ gbla &returnlen
+&worklen seta 0
+&totallen seta 0
+&returnlen seta 2
+ lclc &len
+ lclc &p
+ lcla &i
+
+ aif c:&locals=0,.doparms
+.dolocals
+&i seta 1
+.bb
+&p setc &locals(&i)
+&len amid &p,2,1
+ aif "&len"=":",.cc
+&len amid &p,1,2
+&p amid &p,4,l:&p-3
+ ago .dd
+.cc
+&len amid &p,1,1
+&p amid &p,3,l:&p-2
+.dd
+&p equ &worklen+1
+&worklen seta &worklen+&len
+&i seta &i+1
+ aif &i<=c:&locals,^bb
+.doparms
+ aif c:&parms=0,.e
+&i seta 1
+.b
+&p setc &parms(&i)
+&len amid &p,2,1
+ aif "&len"=":",.c
+&len amid &p,1,2
+&p amid &p,4,l:&p-3
+ ago .d
+.c
+&len amid &p,1,1
+&p amid &p,3,l:&p-2
+.d
+&p equ &totallen+&return+1+&worklen
+&totallen seta &totallen+&len
+&i seta &i+1
+ aif &i<=c:&parms,^b
+.e
+ tsc
+ aif &worklen=0,.f
+ sec
+ sbc #&worklen
+ tcs
+.f
+ phd
+ tcd
+ mend
+
+ macro
+&l return &r
+&l anop
+ lclc &len
+ aif c:&r,.a
+ lclc &r
+&r setc 0
+&len setc 0
+ ago .h
+.a
+&len amid &r,2,1
+ aif "&len"=":",.b
+&len amid &r,1,2
+&r amid &r,4,l:&r-3
+ ago .c
+.b
+&len amid &r,1,1
+&r amid &r,3,l:&r-2
+.c
+ aif &len<>2,.d
+ _ldy &r
+ ago .h
+.d
+ aif &len<>4,.e
+ ldx &r+2
+ ldy &r
+ ago .h
+.e
+ aif &len<>10,.g
+ ldy #&r
+ ldx #^&r
+ ago .h
+.g
+ mnote 'Not a valid return length',16
+ mexit
+.h
+ aif &totallen=0,.i
+ lda &worklen+3
+ sta &worklen+&totallen+3
+ lda &worklen+1
+ sta &worklen+&totallen+1
+.i
+ pld
+ tsc
+ clc
+ adc #&worklen+&totallen
+ tcs
+ aif &len=0,.j
+ tya
+.j
+ plb
+ rtl
+ mend
+
+ macro
+&l lreturn &r
+&l anop
+ lclc &len
+ aif c:&r,.a
+ lclc &r
+&r setc 0
+&len setc 0
+ ago .h
+.a
+&len amid &r,2,1
+ aif "&len"=":",.b
+&len amid &r,1,2
+&r amid &r,4,l:&r-3
+ ago .c
+.b
+&len amid &r,1,1
+&r amid &r,3,l:&r-2
+.c
+ aif &len<>2,.d
+ _ldy &r
+ ago .h
+.d
+ aif &len<>4,.e
+ ldx &r+2
+ ldy &r
+ ago .h
+.e
+ aif &len<>10,.g
+ ldy #&r
+ ldx #^&r
+ ago .h
+.g
+ mnote 'Not a valid return length',16
+ mexit
+.h
+ aif &totallen=0,.i
+ lda &worklen+1
+ sta &worklen+&totallen+1
+.i
+ pld
+ tsc
+ clc
+ adc #&worklen+&totallen
+ tcs
+ aif &len=0,.j
+ tya
+.j
+ rts
+ mend
+
