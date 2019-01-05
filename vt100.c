@@ -649,6 +649,39 @@ void vt100_process(const unsigned char *buffer, unsigned buffer_size) {
 	ShowCursor(__x, __y);
 }
 
+/* adb codes for extended keys.  passed as-is with keypad bit set */
+/* nb - kegs gobbles up fkeys for his own use */
+enum {
+	kVK_F17                       = 0x40,
+	kVK_VolumeUp                  = 0x48,
+	kVK_VolumeDown                = 0x49,
+	kVK_Mute                      = 0x4A,
+	kVK_F18                       = 0x4F,
+	kVK_F19                       = 0x50,
+	kVK_F20                       = 0x5A,
+	kVK_F5                        = 0x60,
+	kVK_F6                        = 0x61,
+	kVK_F7                        = 0x62,
+	kVK_F3                        = 0x63,
+	kVK_F8                        = 0x64,
+	kVK_F9                        = 0x65,
+	kVK_F11                       = 0x67,
+	kVK_F13                       = 0x69,
+	kVK_F16                       = 0x6A,
+	kVK_F14                       = 0x6B,
+	kVK_F10                       = 0x6D,
+	kVK_F12                       = 0x6F,
+	kVK_F15                       = 0x71,
+	kVK_Help                      = 0x72,
+	kVK_Home                      = 0x73,
+	kVK_PageUp                    = 0x74,
+	kVK_ForwardDelete             = 0x75,
+	kVK_F4                        = 0x76,
+	kVK_End                       = 0x77,
+	kVK_F2                        = 0x78,
+	kVK_PageDown                  = 0x79,
+	kVK_F1                        = 0x7A
+};
 
 //
 // remap the iigs key to a vt100 code (if necessary) and send it out.
@@ -724,22 +757,22 @@ void vt100_event(EventRecord *event) {
 			break;
 
 
-		case 0x7a: // f1
+		case kVK_F1: // f1
 			if (DECANM) { cp = ESC "OP"; len = 3; }
 			else { cp = ESC "P"; len = 2; }
 			break;
 
-		case 0x78: // f2
+		case kVK_F2: // f2
 			if (DECANM) { cp = ESC "OQ"; len = 3; }
 			else { cp = ESC "Q"; len = 2; }
 			break;
 
-		case 0x63: // f3
+		case kVK_F3: // f3
 			if (DECANM) { cp = ESC "OR"; len = 3; }
 			else { cp = ESC "R"; len = 2; }
 			break;
 
-		case 0x76: // f4
+		case kVK_F4: // f4
 			if (DECANM) { cp = ESC "OS"; len = 3; }
 			else { cp = ESC "S"; len = 2; }
 			break;
