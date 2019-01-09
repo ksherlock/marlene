@@ -355,7 +355,7 @@ static void clear_tabs(void) {
 					tabs[chunk] &= ~mask;		
 				}
 				break;
-			case 5:
+			case 3:
 				tabs[0] = 0;
 				tabs[1] = 0;
 				tabs[2] = 0;
