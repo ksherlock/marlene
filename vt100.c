@@ -100,11 +100,11 @@ void vt100_init(unsigned flags)
 		LNM = flags & vtLNM;
 	}
 
-	tabs[0] = 0x8080;
-	tabs[1] = 0x8080;
-	tabs[2] = 0x8080;
-	tabs[3] = 0x8080;
-	tabs[4] = 0x0080;
+	tabs[0] = 0x0100;
+	tabs[1] = 0x0101;
+	tabs[2] = 0x0101;
+	tabs[3] = 0x0101;
+	tabs[4] = 0x0101;
 
 	parms[0] = 0;
 	parm_count = 0;
