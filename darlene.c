@@ -192,6 +192,11 @@ int main(int argc, char **argv) {
 		return 1;
 	}
 
+	if (!isatty(STDIN_FILENO)) {
+		ErrWriteCString("stdin required.\r\n");
+		return 1;
+	}
+
 	term_var.value = "\x05\x00vt100";
 	child_argv = NULL;
 	for (i = 1; i < argc; ++i) {
@@ -260,6 +265,11 @@ int main(int argc, char **argv) {
 		goto _exit;
 	}
 
+	/* reset the controlling terminal, which was clobbered by opening a pty */
+	/* standard TIOCSCTTY causes ORCA/C shift errors */
+	#undef TIOCSCTTY
+	#define TIOCSCTTY (0x20000000ul | ('t' << 8) | 97)
+	ioctl(STDIN_FILENO, TIOCSCTTY, (void *)0);
 
 
 	for(;;) {
